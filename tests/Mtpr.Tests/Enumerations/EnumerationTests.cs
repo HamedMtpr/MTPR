@@ -68,7 +68,7 @@ public partial class EnumerationTests : UnitTest
         var sut = new SomeEnumeration("1", "One");
 
         sut.Equals((Enumeration?)null).Should().BeFalse();
-        sut.Equals((object?)null).Should().BeFalse();
+        sut!.Equals((object?)null).Should().BeFalse();
     }
 
     [Fact]

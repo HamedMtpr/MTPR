@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using Mtpr.Core;
+﻿using Mtpr.Core;
 using Mtpr.TestUtilities;
 
 namespace Mtpr.Tests;
