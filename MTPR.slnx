@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Mtpr.Core/Mtpr.Core.csproj" />
+  </Folder>
+</Solution>
