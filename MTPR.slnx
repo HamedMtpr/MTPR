@@ -2,4 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/Mtpr.Core/Mtpr.Core.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Mtpr.Tests/Mtpr.Tests.csproj" />
+    <Project Path="tests/Mtpr.TestUtilities/Mtpr.TestUtilities.csproj" />
+  </Folder>
 </Solution>
