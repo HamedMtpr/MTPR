@@ -1,5 +1,6 @@
-using Mtpr.TestUtilities;
+using System.Collections;
 using Mtpr.Core;
+using Mtpr.TestUtilities;
 
 namespace Mtpr.Tests;
 
@@ -98,7 +99,7 @@ public class PaginatedListTests : UnitTest
     [Fact]
     public void NonGeneric_Enumeration_Should_Return_Items()
     {
-        System.Collections.IEnumerable sut = createList(3, 2);
+        IEnumerable sut = createList(3, 2);
         var actual = new List<object>();
 
         foreach (var item in sut)
