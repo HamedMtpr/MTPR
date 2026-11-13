@@ -1,5 +1,5 @@
 using System.Linq.Expressions;
-using Mtpr.Core;
+using Mtpr.Core.Builders;
 using Mtpr.TestUtilities;
 
 namespace Mtpr.Tests;

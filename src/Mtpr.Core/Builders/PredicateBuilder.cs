@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace Mtpr.Core;
+namespace Mtpr.Core.Builders;
 
 public static class PredicateBuilder
 {
