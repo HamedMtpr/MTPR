@@ -1,7 +1,10 @@
+using System.Collections;
+
 namespace Mtpr.Core;
 
-public class PaginatedList<T> : List<T>
+public class PaginatedList<T> : IReadOnlyList<T>
 {
+    private readonly List<T> items;
     private int pageSize;
 
     public int CurrentPageNumber
@@ -18,7 +21,10 @@ public class PaginatedList<T> : List<T>
             field = Math.Clamp(value, 1, PageCount);
         }
     }
-    public int PageCount { get; private set; }
+    public int Count => items.Count;
+    public int PageCount => (int)Math.Ceiling(Count / (double)pageSize);
+
+    public T this[int index] => items[index];
 
     /// <exception cref="ArgumentOutOfRangeException">Value is less than 1.</exception>
     public int PageSize
@@ -27,10 +33,10 @@ public class PaginatedList<T> : List<T>
         set
         {
             if (value < 1)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "PageSize must be at least 1.");
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    "PageSize must be at least 1.");
 
             pageSize = value;
-            PageCount = (int)Math.Ceiling(Count / (double)pageSize);
             CurrentPageNumber = 1;
         }
     }
@@ -38,19 +44,24 @@ public class PaginatedList<T> : List<T>
     public bool HasPreviousPage => CurrentPageNumber > 1;
     public bool HasNextPage => CurrentPageNumber < PageCount;
     public IEnumerable<T> CurrentPage => 
-        this.Skip((CurrentPageNumber - 1) * pageSize)
+        items
+            .Skip((CurrentPageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToList();
 
-    /// <exception cref="ArgumentNullException"><paramref name="items"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="pageSize"/> is less than 1.</exception>
-    public PaginatedList(IEnumerable<T> items, int pageSize)
+    public PaginatedList(IEnumerable<T> source, int pageSize)
     {
-        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(source);
 
-        AddRange(items);
+        items = [.. source];
         PageSize = pageSize;
     }
+
+    public IEnumerator<T> GetEnumerator() => items.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public void MoveFirst() => CurrentPageNumber = 1;
 

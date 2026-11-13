@@ -5,9 +5,6 @@ namespace Mtpr.Tests;
 
 public class PaginatedListTests : UnitTest
 {
-    private static PaginatedList<int> createList(int count, int pageSize) =>
-        new(Enumerable.Range(1, count), pageSize);
-
     #region Constructor and paging math
 
     [Theory]
@@ -50,9 +47,9 @@ public class PaginatedListTests : UnitTest
     {
         Action action = () => new PaginatedList<int>(null!, 10);
 
-        action.Should().
-            Throw<ArgumentNullException>()
-            .WithParameterName("items");
+        action.Should()
+            .Throw<ArgumentNullException>()
+            .WithParameterName("source");
     }
 
     [Theory]
@@ -86,14 +83,51 @@ public class PaginatedListTests : UnitTest
     }
 
     [Fact]
-    public void CurrentPage_Should_Be_A_Snapshot()
+    public void CurrentPage_Should_Be_Isolated_From_Source_Changes()
     {
-        var sut = createList(5, 10);
+        var source = new List<int> { 1, 2, 3 };
+        var sut = new PaginatedList<int>(source, 10);
 
-        var page = sut.CurrentPage;
-        sut.Add(6);
+        source.Add(4);
 
-        page.Should().HaveCount(5);
+        sut.Count.Should().Be(3);
+        sut.PageCount.Should().Be(1);
+        sut.CurrentPage.Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public void NonGeneric_Enumeration_Should_Return_Items()
+    {
+        System.Collections.IEnumerable sut = createList(3, 2);
+        var actual = new List<object>();
+
+        foreach (var item in sut)
+            actual.Add(item);
+
+        actual.Should().Equal(1, 2, 3);
+    }
+
+    #endregion
+
+    #region Read-only contract
+
+    [Fact]
+    public void PaginatedList_Should_Not_Expose_Mutable_List_Api()
+    {
+        typeof(List<int>).IsAssignableFrom(typeof(PaginatedList<int>)).Should().BeFalse();
+        typeof(IList<int>).IsAssignableFrom(typeof(PaginatedList<int>)).Should().BeFalse();
+        typeof(IReadOnlyList<int>).IsAssignableFrom(typeof(PaginatedList<int>)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Count_Indexer_And_Enumeration_Should_Reflect_Items()
+    {
+        var sut = createList(5, 2);
+
+        sut.Count.Should().Be(5);
+        sut[0].Should().Be(1);
+        sut[4].Should().Be(5);
+        sut.Should().Equal(1, 2, 3, 4, 5);
     }
 
     #endregion
@@ -225,6 +259,13 @@ public class PaginatedListTests : UnitTest
         sut.PageSize.Should().Be(10);
         sut.PageCount.Should().Be(3);
     }
+
+    #endregion
+
+    #region Privated Method
+
+    private static PaginatedList<int> createList(int count, int pageSize) =>
+        new(Enumerable.Range(1, count), pageSize);
 
     #endregion
 }
