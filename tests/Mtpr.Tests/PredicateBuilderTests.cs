@@ -229,4 +229,55 @@ public class PredicateBuilderTests : UnitTest
             .Throw<ArgumentNullException>()
             .WithParameterName("expr2");
     }
+
+    [Fact]
+    public void Or_Should_Not_Produce_Invocation_Expression()
+    {
+        // Arrange
+        Expression<Func<int, bool>> isNegative = x => x < 0;
+        Expression<Func<int, bool>> isLarge = y => y > 100;
+
+        // Act
+        var actual = isNegative.Or(isLarge);
+
+        // Assert
+        actual.ToString().Should().NotContain("Invoke");
+        actual.Parameters.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void And_Should_Not_Produce_Invocation_Expression()
+    {
+        // Arrange
+        Expression<Func<int, bool>> isPositive = x => x > 0;
+        Expression<Func<int, bool>> isEven = y => y % 2 == 0;
+
+        // Act
+        var actual = isPositive.And(isEven);
+
+        // Assert
+        actual.ToString().Should().NotContain("Invoke");
+        actual.Parameters.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Chained_Combinations_Should_Be_Translatable_By_Queryable()
+    {
+        // Arrange
+        var source = new[] { -5, 2, 3, 50, 200 }.AsQueryable();
+
+        var predicate = PredicateBuilder
+            .False<int>()
+            .Or(x => x < 0)
+            .Or(x => x > 100)
+            .And(x => x != 200);
+
+        // Act
+        var actual = source
+            .Where(predicate)
+            .ToList();
+
+        // Assert
+        actual.Should().Equal(-5);
+    }
 }
