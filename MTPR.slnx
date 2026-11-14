@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Mtpr.Tests/Mtpr.Tests.csproj" />
+    <Project Path="tests/Mtpr.TestUtilities.Tests/Mtpr.TestUtilities.Tests.csproj" />
     <Project Path="tests/Mtpr.TestUtilities/Mtpr.TestUtilities.csproj" />
   </Folder>
 </Solution>
