@@ -47,12 +47,12 @@ MTPR is a configuration-driven, no-code backend generator. A backend for any app
 
 **Goal:** Prove the core hypothesis with one thin end-to-end path.
 
-- [ ] Load an entity definition from a file.
-- [ ] Generate the database table and migration automatically.
-- [ ] Expose generic REST CRUD for that entity.
-- [ ] Validate input from field metadata (type, required, length, range).
-- [ ] Return errors using `MtprException` codes.
-- [ ] Integration tests against a real database.
+- [x] Load an entity definition from a file.
+- [x] Generate the database table and migration automatically.
+- [x] Expose generic REST CRUD for that entity.
+- [x] Validate input from field metadata (type, required, length, range).
+- [x] Return errors using `MtprException` codes.
+- [x] Integration tests against a real database.
 
 **Exit criteria:** A new entity added only by editing a definition file gets working CRUD, with no code change and no rebuild.
 
