@@ -4,6 +4,11 @@ A flexible, configuration-driven no-code backend generator designed to instantly
 
 It eliminates boilerplate development, adapts to diverse industry requirements, and significantly accelerates software delivery.
 
+- See the [project roadmap](docs/planning/project_roadmap.md) for planned milestones.
+- For the vertical slice prototype, see the [M1 - vertical slice guide](docs/building/m1_vertical_slice_build.md).
+
+
+## Documetation Structure Guide
 > - Planning — [how to plan work for the project.](docs/planning/index.md)
 > - Code Contribution — [ how to contribute code to the project.](docs/coding/index.md)
 > - Building — [ how to build the project from source.](docs/building/index.md)

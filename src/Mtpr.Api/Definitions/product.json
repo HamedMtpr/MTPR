@@ -1,0 +1,8 @@
+{
+  "name": "product",
+  "fields": [
+    { "name": "title", "type": "string", "required": true, "minLength": 2, "maxLength": 100 },
+    { "name": "price", "type": "decimal", "required": true, "min": 0 },
+    { "name": "inStock", "type": "bool" }
+  ]
+}

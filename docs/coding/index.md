@@ -5,4 +5,5 @@ This document describes how to contribute code to the project.
 
 ## Table of Contents
 
-- [Commit Guide](Commits_Guide.md)
+- [Commit Guide](commit_guide.md)
+- [M1 vertical slice implementation](m1_vertical_slice_implementation.md)
