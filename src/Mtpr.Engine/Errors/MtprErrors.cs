@@ -1,0 +1,58 @@
+using Mtpr.Core.Exceptions;
+
+namespace Mtpr.Engine.Errors;
+
+/// <summary>Error codes the engine raises through <see cref="MtprException"/>.</summary>
+public static class MtprErrors
+{
+    public static readonly MtprExceptionCode EntityNotFound =
+        new("MTPR-1001", 
+            "Entity '{0}' is not defined.");
+
+    public static readonly MtprExceptionCode RecordNotFound =
+        new("MTPR-1002", 
+            "Record '{1}' of entity '{0}' was not found.");
+
+    public static readonly MtprExceptionCode ValidationFailed =
+        new("MTPR-2000",
+            "Validation failed with {0} error(s).");
+
+    public static readonly MtprExceptionCode FieldRequired =
+        new("MTPR-2001", 
+            "Field '{0}' is required.");
+
+    public static readonly MtprExceptionCode FieldTypeMismatch =
+        new("MTPR-2002", 
+            "Field '{0}' must be of type {1}.");
+
+    public static readonly MtprExceptionCode FieldTooLong =
+        new("MTPR-2003", 
+            "Field '{0}' must not exceed {1} characters.");
+
+    public static readonly MtprExceptionCode FieldTooShort =
+        new("MTPR-2004", "Field '{0}' must be at least {1} characters.");
+
+    public static readonly MtprExceptionCode FieldBelowMinimum =
+        new("MTPR-2005", 
+            "Field '{0}' must be at least {1}.");
+
+    public static readonly MtprExceptionCode FieldAboveMaximum =
+        new("MTPR-2006",
+            "Field '{0}' must be at most {1}.");
+
+    public static readonly MtprExceptionCode UnknownField =
+        new("MTPR-2007",
+            "Field '{0}' is not defined on entity '{1}'.");
+
+    public static readonly MtprExceptionCode InvalidRequestBody =
+        new("MTPR-2008", 
+            "Request body must be a JSON object.");
+
+    public static readonly MtprExceptionCode InvalidDefinition =
+        new("MTPR-3001", 
+            "Definition '{0}' is invalid: {1}");
+
+    public static readonly MtprExceptionCode SchemaChangeNotSupported =
+        new("MTPR-3002",
+            "Entity '{0}': {1}");
+}
