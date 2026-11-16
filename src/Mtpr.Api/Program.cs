@@ -14,8 +14,8 @@ builder.Services.AddMtprEngine(
             p.GetRequiredService<IWebHostEnvironment>()
                 .ContentRootPath);
     },
-    p => 
-        p.GetRequiredService<IConfiguration>()["Mtpr:ConnectionString"] 
+    p =>
+        p.GetRequiredService<IConfiguration>()["Mtpr:ConnectionString"]
             ?? "Data Source=mtpr.db");
 
 var app = builder.Build();
@@ -24,54 +24,62 @@ app.UseMiddleware<MtprExceptionMiddleware>();
 
 var api = app.MapGroup("/api/{entity}");
 
-api.MapPost("/", 
-    async (string entity, 
-        JsonElement body, 
-        IEntityService service, 
+api.MapPost("/",
+    async (string entity,
+        JsonElement body,
+        IEntityService service,
         CancellationToken ct) =>
 {
-    var created = 
+    var created =
         await service.CreateAsync(entity, BodyReader.ToInput(body), ct);
 
     return Results.Created($"/api/{entity}/{created["id"]}", created);
 });
 
-api.MapGet("/", 
-    async (string entity, 
-            int? skip, 
+api.MapGet("/",
+    async (string entity,
+            int? skip,
             int? take,
+            string? sort,
+            string? fields,
+            HttpRequest request,
             IEntityService service,
             CancellationToken ct)
-    => Results.Ok(await service.ListAsync(entity, 
-        skip ?? 0,
-        take ?? 50,
+    => Results.Ok(await service.ListAsync(entity,
+        new RecordQuery(skip ?? 0, 
+            take ?? 50,
+            sort,
+            fields,
+            request.Query["filter"]
+                .Select(v => v ?? string.Empty)
+                .ToArray()),
         ct)));
 
-api.MapGet("/{id:guid}", 
-    async (string entity, 
+api.MapGet("/{id:guid}",
+    async (string entity,
             Guid id,
-            IEntityService service, 
+            IEntityService service,
             CancellationToken ct)
     => Results.Ok(await service.GetAsync(entity, id, ct)));
 
-api.MapPut("/{id:guid}", 
-    async (string entity, 
-            Guid id, 
-            JsonElement body, 
+api.MapPut("/{id:guid}",
+    async (string entity,
+            Guid id,
+            JsonElement body,
             IEntityService service,
             CancellationToken ct)
     => Results.Ok(await service.UpdateAsync(entity,
-        id, BodyReader.ToInput(body), 
+        id, BodyReader.ToInput(body),
         false, ct)));
 
-api.MapPatch("/{id:guid}", 
-    async (string entity, 
+api.MapPatch("/{id:guid}",
+    async (string entity,
             Guid id,
-            JsonElement body, 
-            IEntityService service, 
+            JsonElement body,
+            IEntityService service,
             CancellationToken ct)
-    => Results.Ok(await service.UpdateAsync(entity, 
-        id, 
+    => Results.Ok(await service.UpdateAsync(entity,
+        id,
         BodyReader.ToInput(body),
         true,
         ct)));

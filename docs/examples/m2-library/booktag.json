@@ -1,0 +1,10 @@
+{
+  "name": "booktag",
+  "fields": [
+    { "name": "bookId", "type": "guid", "required": true,
+      "references": { "entity": "book", "onDelete": "cascade" } },
+    { "name": "tagId", "type": "guid", "required": true,
+      "references": { "entity": "tag", "onDelete": "cascade" } }
+  ],
+  "unique": [["bookId", "tagId"]]
+}

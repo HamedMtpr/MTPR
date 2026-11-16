@@ -8,13 +8,12 @@ public interface IEntityService
         IReadOnlyDictionary<string, JsonElement> input,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyDictionary<string, object?>> GetAsync(string entity, 
-        Guid id, 
+    Task<IReadOnlyDictionary<string, object?>> GetAsync(string entity,
+        Guid id,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> ListAsync(string entity,
-        int skip,
-        int take,
+        RecordQuery query,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyDictionary<string, object?>> UpdateAsync(string entity,
@@ -23,7 +22,7 @@ public interface IEntityService
         bool partial,
         CancellationToken cancellationToken);
 
-    Task DeleteAsync(string entity, 
-        Guid id, 
+    Task DeleteAsync(string entity,
+        Guid id,
         CancellationToken cancellationToken);
 }

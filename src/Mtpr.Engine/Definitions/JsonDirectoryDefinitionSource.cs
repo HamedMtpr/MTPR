@@ -7,7 +7,7 @@ using Mtpr.Engine.Errors;
 namespace Mtpr.Engine.Definitions;
 
 /// <summary>Reads one entity per <c>*.json</c> file from a directory.</summary>
-public class JsonDirectoryDefinitionSource(string directory, 
+public class JsonDirectoryDefinitionSource(string directory,
     IEntityDefinitionVerifier verifier)
     : IEntityDefinitionSource
 {
@@ -53,7 +53,15 @@ public class JsonDirectoryDefinitionSource(string directory,
                     new ExceptionParameter($"entity '{definition.Name}' is defined twice"));
         }
 
-        return result.Values.ToList();
+        foreach (var entity in result.Values)
+            foreach (var field in entity.Fields)
+                if (field.References is { } reference &&
+                    !result.ContainsKey(reference.Entity))
+                throw new MtprException(MtprErrors.InvalidDefinition,
+                    new ExceptionParameter(entity.Name),
+                    new ExceptionParameter($"field '{field.Name}' references unknown entity '{reference.Entity}'"));
+
+        return [.. result.Values];
     }
 
     private string[] files()

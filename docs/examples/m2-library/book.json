@@ -1,0 +1,9 @@
+{
+  "name": "book",
+  "fields": [
+    { "name": "title", "type": "string", "required": true },
+    { "name": "price", "type": "decimal", "required": true },
+    { "name": "authorId", "type": "guid", "required": true,
+      "references": { "entity": "author", "onDelete": "restrict" } }
+  ]
+}

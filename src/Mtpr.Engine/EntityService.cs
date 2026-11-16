@@ -32,15 +32,17 @@ public class EntityService(IDefinitionCatalog catalog,
     }
 
     public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> ListAsync(string entity,
-        int skip,
-        int take,
+        RecordQuery query,
         CancellationToken cancellationToken)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
 
-        return await store.ListAsync(definition, 
-            Math.Max(skip, 0),
-            Math.Clamp(take, 1, 200), 
+        return await store.ListAsync(definition,
+            query with
+            {
+                Skip = Math.Max(query.Skip, 0),
+                Take = Math.Clamp(query.Take, 1, 200)
+            },
             cancellationToken);
     }
 

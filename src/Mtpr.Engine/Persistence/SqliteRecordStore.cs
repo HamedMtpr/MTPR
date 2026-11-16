@@ -39,27 +39,30 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-        return await reader.ReadAsync(cancellationToken) 
-            ? map(definition, reader) 
+        return await reader.ReadAsync(cancellationToken)
+            ? map(definition, reader)
             : null;
     }
 
     public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> ListAsync(EntityDefinition definition,
-        int skip,
-        int take,
+        RecordQuery query,
         CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT * FROM \"{definition.Name}\" ORDER BY rowid LIMIT $take OFFSET $skip";
-        command.Parameters.AddWithValue("$take", take);
-        command.Parameters.AddWithValue("$skip", skip);
+        var selected = SqliteQueryBuilder.Build(command, definition, query);
+        command.Parameters.AddWithValue("$take", query.Take);
+        command.Parameters.AddWithValue("$skip", query.Skip);
 
         var rows = new List<IReadOnlyDictionary<string, object?>>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         while (await reader.ReadAsync(cancellationToken))
-            rows.Add(map(definition, reader));
+        {
+            var row = map(definition, reader);
+            rows.Add(selected is null ? row : row.Where(p => selected.Contains(p.Key))
+                .ToDictionary(p => p.Key, p => p.Value));
+        }
 
         return rows;
     }
@@ -116,12 +119,12 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
     {
         var row = new Dictionary<string, object?>
         {
-            [idKey] = 
+            [idKey] =
                 Guid.Parse(reader.GetString(reader.GetOrdinal(idKey)))
         };
 
         foreach (var field in definition.Fields)
-            row[field.Name] = SqliteTypeMap.FromDb(field.Type, 
+            row[field.Name] = SqliteTypeMap.FromDb(field.Type,
                 reader.GetValue(reader.GetOrdinal(field.Name)));
 
         return row;
