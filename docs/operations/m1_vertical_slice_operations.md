@@ -1,7 +1,6 @@
 # M1 vertical slice operations
 
 - [Back to index](index.md)
-- [M2 schema evolution](../building/m2_schema_evolution.md) (current behavior after M1)
 
 ## Configuration and startup
 

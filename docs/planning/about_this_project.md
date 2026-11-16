@@ -4,7 +4,7 @@ This document describes the four main components of the system architecture and 
 - [Back to index](index.md)
 
 ## Introduction
-This project aims to build a flexible, configuration-driven no-code backend generator that instantly creates backend systems for any application domain with custom business rules—without traditional coding.
+This project aims to build a metadata-driven backend generator that turns configuration and custom business rules into backend systems for a wide range of application domains.
 
 It eliminates boilerplate development, adapts to diverse industry requirements, and significantly accelerates software delivery.
 

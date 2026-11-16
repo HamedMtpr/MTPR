@@ -7,3 +7,4 @@ This document describes how to contribute code to the project.
 
 - [Commit Guide](commit_guide.md)
 - [M1 vertical slice implementation](m1_vertical_slice_implementation.md)
+- [M2 relations and querying implementation](m2_relations_querying_implementation.md)

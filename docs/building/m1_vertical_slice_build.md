@@ -7,7 +7,6 @@
 - [M1 deployment](../deployment/m1_vertical_slice_deployment.md)
 - [M1 operations](../operations/m1_vertical_slice_operations.md)
 - [M1 testing](../testing/m1_vertical_slice_testing.md)
-- [M2 schema evolution](m2_schema_evolution.md) (current behavior after M1)
 - [Unreleased changes](../releasing/unreleased.md)
 
 Requires the .NET 10 SDK. From the repository root, run:

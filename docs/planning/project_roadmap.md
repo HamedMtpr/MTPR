@@ -7,7 +7,7 @@
 
 ## 1. Vision
 
-MTPR is a configuration-driven, no-code backend generator. A backend for any application domain, with its own business rules, should be created through configuration alone, without writing code.
+MTPR is a metadata-driven backend generator. Its vision is to create backends for any application domain, including their business rules, through configuration alone.
 
 ## 2. Guiding Principles
 
@@ -58,12 +58,18 @@ MTPR is a configuration-driven, no-code backend generator. A backend for any app
 
 ### M2 - Relations and Querying (Weeks 6-7)
 
-- [ ] One-to-many and many-to-many relations.
-- [ ] Filtering, sorting, paging, field selection.
-- [ ] Referential integrity and delete behaviors.
-- [ ] Schema evolution v1: safe additive changes (add field, add entity).
+- [x] One-to-many and many-to-many relations.
+- [x] Filtering, sorting, paging, field selection.
+- [x] Referential integrity and delete behaviors.
+- [x] Schema evolution v1: safe additive changes (add optional field, add entity).
 
 **Exit criteria:** A multi-entity sample domain works through the API.
+
+The library sample demonstrates the API flow and is covered by integration tests.
+
+Local test results are the current milestone verification in the absence of CI. CI verification and the review of open critical bugs remain separate checks under the definition of done.
+
+- [M2 library sample](../building/m2_relations_querying.md)
 
 ### M3 - Business Rules (Weeks 8-9)
 
