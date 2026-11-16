@@ -278,6 +278,74 @@ public class VerticalSliceTests : IntegrationTest, IDisposable
     }
 
     [Fact]
+    public async Task Adding_optional_fields_preserves_existing_records_across_multiple_migrations()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var created = await client.PostAsJsonAsync("/api/product",
+            new
+            {
+                title = "Pen",
+                price = 2
+            }, 
+            cancellationToken: ct);
+
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct))
+            .GetProperty("id")
+            .GetString();
+
+        var first = product.Replace("\"min\": 0", 
+            "\"min\": 0 }, { \"name\": \"note\", \"type\": \"string\"");
+
+        factory.Define("product", first);
+
+        var migrated = await client.GetFromJsonAsync<JsonElement>($"/api/product/{id}", 
+            cancellationToken: ct);
+
+        migrated.GetProperty("title")
+            .GetString()
+            .Should()
+            .Be("Pen");
+
+        migrated.GetProperty("note")
+            .ValueKind
+            .Should()
+            .Be(JsonValueKind.Null);
+
+        factory.Define("product",
+            first.Replace("\"name\": \"note\", \"type\": \"string\"", 
+                "\"name\": \"note\", \"type\": \"string\" }, { \"name\": \"code\", \"type\": \"int\""));
+
+        var again = await client.GetFromJsonAsync<JsonElement>($"/api/product/{id}",
+            cancellationToken: ct);
+
+        again.GetProperty("code")
+            .ValueKind
+            .Should()
+            .Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Adding_a_required_field_is_rejected_without_changing_the_database()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await client.GetAsync("/api/product", ct);
+
+        factory.Define("product", 
+            product.Replace("\"min\": 0", "\"min\": 0 }, { \"name\": \"note\", \"type\": \"string\", \"required\": true"));
+
+        (await client.GetAsync("/api/product", ct)).
+            StatusCode.
+            Should()
+            .Be(HttpStatusCode.InternalServerError);
+
+        factory.Define("product", product);
+
+        (await client.GetAsync("/api/product", ct)).StatusCode
+            .Should()
+            .Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Changing_an_applied_definition_is_rejected()
     {
         await client.GetAsync("/api/product",

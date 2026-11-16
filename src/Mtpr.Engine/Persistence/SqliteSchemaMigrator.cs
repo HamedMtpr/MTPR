@@ -44,15 +44,81 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
             return;
 
         if (applied is not null)
-            throw new MtprException(MtprErrors.SchemaChangeNotSupported,
-                new ExceptionParameter(definition.Name),
-                new ExceptionParameter("changing an already applied definition is not supported yet."));
+        {
+            await addFieldsAsync(connection, 
+                transaction, 
+                definition, 
+                applied, 
+                hash,
+                cancellationToken);
+            return;
+        }
 
-        await execute(connection, transaction, createTableSql(definition), cancellationToken);
+        await execute(connection, 
+            transaction, 
+            createTableSql(definition), 
+            cancellationToken);
 
         await using var log = connection.CreateCommand();
         log.Transaction = transaction;
         log.CommandText = $"INSERT INTO {logTable} (name, hash, applied_at) VALUES ($n, $h, $t)";
+        log.Parameters.AddWithValue("$n", definition.Name);
+        log.Parameters.AddWithValue("$h", hash);
+        log.Parameters.AddWithValue("$t", DateTime.UtcNow.ToString("O"));
+        await log.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task addFieldsAsync(SqliteConnection connection, 
+        SqliteTransaction transaction,
+        EntityDefinition definition, 
+        string applied, 
+        string hash,
+        CancellationToken cancellationToken)
+    {
+        var existing = new List<string>();
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = $"PRAGMA table_info(\"{definition.Name}\")";
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var name = reader.GetString(1);
+                if (!name.Equals(EntityDefinitionVerifier.IdFieldName, 
+                        StringComparison.OrdinalIgnoreCase))
+                    existing.Add(name);
+            }
+        }
+
+        var oldFields = existing.Select(definition.FindField).ToList();
+
+        var addedFields = definition.Fields.Where(f => 
+            !existing.Contains(f.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+
+        if (oldFields.Any(f => f is null) || 
+            addedFields.Count == 0 || 
+            addedFields.Any(f => f.Required) ||
+            !definition.Fields.Take(existing.Count)
+                .Select(f => f.Name)
+                .SequenceEqual(existing, StringComparer.OrdinalIgnoreCase) || 
+            computeHash(new EntityDefinition
+            {
+                Name = definition.Name, 
+                Fields = [.. oldFields.OfType<FieldDefinition>()]
+            }) != applied)
+            throw new MtprException(MtprErrors.SchemaChangeNotSupported,
+                new ExceptionParameter(definition.Name),
+                new ExceptionParameter("only adding optional fields is supported for existing entities."));
+
+        foreach (var field in addedFields)
+            await execute(connection, 
+                transaction,
+                $"ALTER TABLE \"{definition.Name}\" ADD COLUMN \"{field.Name}\" {SqliteTypeMap.ColumnType(field.Type)}",
+                cancellationToken);
+
+        await using var log = connection.CreateCommand();
+        log.Transaction = transaction;
+        log.CommandText = $"UPDATE {logTable} SET hash = $h, applied_at = $t WHERE name = $n";
         log.Parameters.AddWithValue("$n", definition.Name);
         log.Parameters.AddWithValue("$h", hash);
         log.Parameters.AddWithValue("$t", DateTime.UtcNow.ToString("O"));
