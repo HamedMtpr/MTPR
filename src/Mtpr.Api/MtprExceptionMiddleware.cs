@@ -1,6 +1,7 @@
 using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Errors;
 using Mtpr.Engine.Validation;
+using Microsoft.Data.Sqlite;
 
 namespace Mtpr.Api;
 
@@ -15,15 +16,15 @@ public class MtprExceptionMiddleware(RequestDelegate next, ILogger<MtprException
         }
         catch (EntityValidationException e)
         {
-            await writeAsync(context, 
+            await writeAsync(context,
                 StatusCodes.Status422UnprocessableEntity, new
             {
                 code = e.Code,
                 message = e.Message,
-                errors = e.Violations.Select(v => 
+                errors = e.Violations.Select(v =>
                     new
                     {
-                        code = v.Code, 
+                        code = v.Code,
                         message = v.Message
                     })
             });
@@ -31,12 +32,23 @@ public class MtprExceptionMiddleware(RequestDelegate next, ILogger<MtprException
         catch (MtprException e)
         {
             logger.LogWarning(e, "Request failed with {Code}", e.Code);
-            await writeAsync(context, statusOf(e.Code), 
+            await writeAsync(context, statusOf(e.Code),
                 new
                 {
-                    code = e.Code, 
+                    code = e.Code,
                     message = e.Message
                 });
+        }
+        catch (SqliteException e) when (e.SqliteExtendedErrorCode is 787 or 1811 or 2067)
+        {
+            logger.LogWarning(e,
+                "Reference or uniqueness constraint failed");
+            await writeAsync(context, StatusCodes.Status409Conflict, new
+            {
+                code = MtprErrors.ReferentialIntegrity.Value,
+                message = 
+                    "The operation violates a reference or uniqueness constraint."
+            });
         }
     }
 

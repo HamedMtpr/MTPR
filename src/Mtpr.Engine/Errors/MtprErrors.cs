@@ -6,11 +6,11 @@ namespace Mtpr.Engine.Errors;
 public static class MtprErrors
 {
     public static readonly MtprExceptionCode EntityNotFound =
-        new("MTPR-1001", 
+        new("MTPR-1001",
             "Entity '{0}' is not defined.");
 
     public static readonly MtprExceptionCode RecordNotFound =
-        new("MTPR-1002", 
+        new("MTPR-1002",
             "Record '{1}' of entity '{0}' was not found.");
 
     public static readonly MtprExceptionCode ValidationFailed =
@@ -18,22 +18,22 @@ public static class MtprErrors
             "Validation failed with {0} error(s).");
 
     public static readonly MtprExceptionCode FieldRequired =
-        new("MTPR-2001", 
+        new("MTPR-2001",
             "Field '{0}' is required.");
 
     public static readonly MtprExceptionCode FieldTypeMismatch =
-        new("MTPR-2002", 
+        new("MTPR-2002",
             "Field '{0}' must be of type {1}.");
 
     public static readonly MtprExceptionCode FieldTooLong =
-        new("MTPR-2003", 
+        new("MTPR-2003",
             "Field '{0}' must not exceed {1} characters.");
 
     public static readonly MtprExceptionCode FieldTooShort =
         new("MTPR-2004", "Field '{0}' must be at least {1} characters.");
 
     public static readonly MtprExceptionCode FieldBelowMinimum =
-        new("MTPR-2005", 
+        new("MTPR-2005",
             "Field '{0}' must be at least {1}.");
 
     public static readonly MtprExceptionCode FieldAboveMaximum =
@@ -45,11 +45,17 @@ public static class MtprErrors
             "Field '{0}' is not defined on entity '{1}'.");
 
     public static readonly MtprExceptionCode InvalidRequestBody =
-        new("MTPR-2008", 
+        new("MTPR-2008",
             "Request body must be a JSON object.");
 
+    public static readonly MtprExceptionCode ReferentialIntegrity =
+        new("MTPR-2009", "The operation violates a reference or uniqueness constraint.");
+
+    public static readonly MtprExceptionCode InvalidQuery =
+        new("MTPR-2010", "Invalid query: {0}");
+
     public static readonly MtprExceptionCode InvalidDefinition =
-        new("MTPR-3001", 
+        new("MTPR-3001",
             "Definition '{0}' is invalid: {1}");
 
     public static readonly MtprExceptionCode SchemaChangeNotSupported =

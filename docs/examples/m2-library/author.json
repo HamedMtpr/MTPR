@@ -1,0 +1,6 @@
+{
+  "name": "author",
+  "fields": [
+    { "name": "name", "type": "string", "required": true }
+  ]
+}

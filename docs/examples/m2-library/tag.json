@@ -1,0 +1,6 @@
+{
+  "name": "tag",
+  "fields": [
+    { "name": "name", "type": "string", "required": true }
+  ]
+}

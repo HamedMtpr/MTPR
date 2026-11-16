@@ -13,8 +13,7 @@ public interface IRecordStore
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> ListAsync(EntityDefinition definition,
-        int skip,
-        int take,
+        RecordQuery query,
         CancellationToken cancellationToken);
 
     /// <returns>False when the record does not exist.</returns>
@@ -24,7 +23,7 @@ public interface IRecordStore
         CancellationToken cancellationToken);
 
     /// <returns>False when the record does not exist.</returns>
-    Task<bool> DeleteAsync(EntityDefinition definition, 
+    Task<bool> DeleteAsync(EntityDefinition definition,
         Guid id,
         CancellationToken cancellationToken);
 }

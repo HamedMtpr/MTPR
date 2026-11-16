@@ -18,4 +18,6 @@ public class FieldDefinition
     public decimal? Min { get; set; }
 
     public decimal? Max { get; set; }
+
+    public FieldReference? References { get; set; }
 }

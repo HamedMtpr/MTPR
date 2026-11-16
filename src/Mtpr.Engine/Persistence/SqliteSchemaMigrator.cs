@@ -16,7 +16,7 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
         CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = 
+        await using var transaction =
             (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
         await execute(connection, transaction,
@@ -35,9 +35,9 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
         CancellationToken cancellationToken)
     {
         var hash = computeHash(definition);
-        var applied = await appliedHashAsync(connection, 
-            transaction, 
-            definition.Name, 
+        var applied = await appliedHashAsync(connection,
+            transaction,
+            definition.Name,
             cancellationToken);
 
         if (applied == hash)
@@ -45,18 +45,18 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
 
         if (applied is not null)
         {
-            await addFieldsAsync(connection, 
-                transaction, 
-                definition, 
-                applied, 
+            await addFieldsAsync(connection,
+                transaction,
+                definition,
+                applied,
                 hash,
                 cancellationToken);
             return;
         }
 
-        await execute(connection, 
-            transaction, 
-            createTableSql(definition), 
+        await execute(connection,
+            transaction,
+            createTableSql(definition),
             cancellationToken);
 
         await using var log = connection.CreateCommand();
@@ -68,10 +68,10 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
         await log.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private static async Task addFieldsAsync(SqliteConnection connection, 
+    private static async Task addFieldsAsync(SqliteConnection connection,
         SqliteTransaction transaction,
-        EntityDefinition definition, 
-        string applied, 
+        EntityDefinition definition,
+        string applied,
         string hash,
         CancellationToken cancellationToken)
     {
@@ -84,7 +84,7 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
             while (await reader.ReadAsync(cancellationToken))
             {
                 var name = reader.GetString(1);
-                if (!name.Equals(EntityDefinitionVerifier.IdFieldName, 
+                if (!name.Equals(EntityDefinitionVerifier.IdFieldName,
                         StringComparison.OrdinalIgnoreCase))
                     existing.Add(name);
             }
@@ -92,28 +92,29 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
 
         var oldFields = existing.Select(definition.FindField).ToList();
 
-        var addedFields = definition.Fields.Where(f => 
+        var addedFields = definition.Fields.Where(f =>
             !existing.Contains(f.Name, StringComparer.OrdinalIgnoreCase)).ToList();
 
-        if (oldFields.Any(f => f is null) || 
-            addedFields.Count == 0 || 
+        if (oldFields.Any(f => f is null) ||
+            addedFields.Count == 0 ||
             addedFields.Any(f => f.Required) ||
             !definition.Fields.Take(existing.Count)
                 .Select(f => f.Name)
-                .SequenceEqual(existing, StringComparer.OrdinalIgnoreCase) || 
+                .SequenceEqual(existing, StringComparer.OrdinalIgnoreCase) ||
             computeHash(new EntityDefinition
             {
-                Name = definition.Name, 
-                Fields = [.. oldFields.OfType<FieldDefinition>()]
+                Name = definition.Name,
+                Fields = [.. oldFields.OfType<FieldDefinition>()],
+                Unique = definition.Unique
             }) != applied)
             throw new MtprException(MtprErrors.SchemaChangeNotSupported,
                 new ExceptionParameter(definition.Name),
                 new ExceptionParameter("only adding optional fields is supported for existing entities."));
 
         foreach (var field in addedFields)
-            await execute(connection, 
+            await execute(connection,
                 transaction,
-                $"ALTER TABLE \"{definition.Name}\" ADD COLUMN \"{field.Name}\" {SqliteTypeMap.ColumnType(field.Type)}",
+                $"ALTER TABLE \"{definition.Name}\" ADD COLUMN {columnSql(field)}",
                 cancellationToken);
 
         await using var log = connection.CreateCommand();
@@ -140,11 +141,25 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
 
     private static string createTableSql(EntityDefinition definition)
     {
-        var columns = definition.Fields.Select(f =>
-            $"\"{f.Name}\" {SqliteTypeMap.ColumnType(f.Type)}{(f.Required ? " NOT NULL" : string.Empty)}");
+        var columns = definition.Fields.Select(columnSql).Concat(definition.Unique.Select(group =>
+            "UNIQUE (" + string.Join(", ", group.Select(name =>
+                $"\"{name}\"" + (definition.FindField(name)!.Type == FieldType.Decimal ? " COLLATE MTPR_DECIMAL" : ""))) + ")"));
 
         return $"CREATE TABLE \"{definition.Name}\" (\"{EntityDefinitionVerifier.IdFieldName}\" TEXT PRIMARY KEY, " +
                $"{string.Join(", ", columns)})";
+    }
+
+    private static string columnSql(FieldDefinition field)
+    {
+        var reference = field.References is null ? string.Empty :
+            $" REFERENCES \"{field.References.Entity}\"(\"id\") ON DELETE " +
+            (field.References.OnDelete switch
+            {
+                DeleteBehavior.Cascade => "CASCADE",
+                DeleteBehavior.SetNull => "SET NULL",
+                _ => "RESTRICT"
+            });
+        return $"\"{field.Name}\" {SqliteTypeMap.ColumnType(field.Type)}{(field.Required ? " NOT NULL" : string.Empty)}{reference}";
     }
 
     private static string computeHash(EntityDefinition definition)
@@ -154,13 +169,20 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
             Name = definition.Name.ToLowerInvariant(),
             Fields = definition.Fields.Select(f => new
             {
-                f.Name, Type = f.Type.ToString(), 
-                f.Required, f.MinLength, 
+                f.Name, Type = f.Type.ToString(),
+                f.Required, f.MinLength,
                 f.MaxLength,
-                f.Min, 
+                f.Min,
                 f.Max
             })
         });
+
+        if (definition.Fields.Any(f => f.References is not null))
+            canonical += JsonSerializer.Serialize(
+                definition.Fields.Select(f => f.References));
+
+        if (definition.Unique.Count > 0)
+            canonical += JsonSerializer.Serialize(definition.Unique);
 
         return Convert.ToHexString(
             SHA256.HashData(
