@@ -35,11 +35,13 @@ MTPR is a metadata-driven backend generator. Its vision is to create backends fo
 **Goal:** Lock the contract and make the repository reliable.
 
 - [ ] Choose and confirm the license deliberately (the current one affects commercial and internal use).
-- [ ] Add `global.json` and `Directory.Build.props` (SDK pinning, shared analyzers, nullable, warnings as errors).
-- [ ] Add CI (GitHub Actions): restore, build, test, on every PR.
-- [ ] Write the first ADRs in `docs/planning/adr/` (target database, API style, rule engine choice).
-- [ ] Draft the versioned JSON Schema for `Entity`, `Field`, `Relation`, `Role`, `Rule`.
-- [ ] Define 5 measurable acceptance criteria for the MVP.
+- [x] Add `global.json` and `Directory.Build.props` (SDK pinning, shared analyzers, nullable, warnings as errors).
+- [x] Add CI (GitHub Actions): restore, build, test, on every PR.
+- [x] Write and accept the first ADRs in the M0 planning document (database and API recorded; rule engine selection deferred to M3).
+- [x] Draft the versioned JSON Schema for `Entity`, `Field`, `Relation`, `Role`, `Rule` (role and rule are proposals, not runtime features).
+- [x] Define 5 measurable acceptance criteria for the MVP.
+
+CI must still run successfully on GitHub, and the project owner must decide the license. ADR review and merge remain outstanding.
 
 **Exit criteria:** CI is green, the schema v0 is committed, ADRs are merged.
 

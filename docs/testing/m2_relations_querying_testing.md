@@ -10,7 +10,7 @@
 - [Integration tests](../../tests/Mtpr.IntegrationTests/)
 - [Library sample definitions(author.json)](../examples/m2-library/author.json)
 - [Library sample definitions(book.json)](../examples/m2-library/book.json)
-- [Library sample definitions(booktag.json)](../examples/m2-library/abooktag.json)
+- [Library sample definitions(booktag.json)](../examples/m2-library/booktag.json)
 - [Library sample definitions(tag.json)](../examples/m2-library/tag.json)
 
 ## Automated tests

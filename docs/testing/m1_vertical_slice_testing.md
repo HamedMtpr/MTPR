@@ -26,7 +26,7 @@ The second command runs the M1 integration suite alone. It hosts the actual API 
 
 ## Manual end-to-end scenarios
 
-Start the API as described in the [deployment guide](../deployment/m1_vertical_slice_deployment.md). The examples below use the sample product definition and PowerShell's `curl.exe`; keep the API running throughout. Use an isolated database and definitions directory because these checks write data.
+Start the API as described in the deployment guide. The examples below use the sample product definition and PowerShell's `curl.exe`; keep the API running throughout. Use an isolated database and definitions directory because these checks write data.
 
 1. Create a record and note the `id` returned in the JSON response:
 
@@ -57,6 +57,6 @@ Start the API as described in the [deployment guide](../deployment/m1_vertical_s
 
    Expect HTTP 422, `MTPR-2000`, and violations for minimum length (`MTPR-2004`), minimum value (`MTPR-2005`) and the unknown field (`MTPR-2007`).
 
-4. While the process is running, add a new entity file as described in [operations](../operations/m1_vertical_slice_operations.md), then send a create request to its endpoint. Expect HTTP 201 without a rebuild or restart. In a disposable test environment, change an already applied definition and request an entity: expect HTTP 500 with `MTPR-3002`; restore the original file afterwards.
+4. While the process is running, add a new entity file as described in operations, then send a create request to its endpoint. Expect HTTP 201 without a rebuild or restart. In a disposable test environment, change an already applied definition and request an entity: expect HTTP 500 with `MTPR-3002`; restore the original file afterwards.
 
 The automated tests and these manual checks are complementary. The manual checks exercise the published deployment and its configured filesystem paths.

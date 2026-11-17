@@ -6,5 +6,6 @@ This document describes how to contribute code to the project.
 ## Table of Contents
 
 - [Commit Guide](commit_guide.md)
+- [M0 foundation hardening schema](m0_foundation_hardening.schema.json)
 - [M1 vertical slice implementation](m1_vertical_slice_implementation.md)
 - [M2 relations and querying implementation](m2_relations_querying_implementation.md)

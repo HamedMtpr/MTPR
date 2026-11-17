@@ -8,4 +8,5 @@ This document describes the planning process for the project.
 
 - [About This Project](about_this_project.md)
 - [Project Roadmap](project_roadmap.md)
+- [M0 - Foundation Hardening](m0_foundation_hardening.md)
 

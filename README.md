@@ -5,6 +5,7 @@ MTPR is a metadata-driven backend generator designed to turn configuration and b
 It eliminates boilerplate development, adapts to diverse industry requirements, and significantly accelerates software delivery.
 
 - See the [project roadmap](docs/planning/project_roadmap.md) for planned milestones.
+- For the foundation hardening, see the [M0 foundation hardening](docs/planning/m0_foundation_hardening.md).
 - For the vertical slice prototype, see the [M1 vertical slice guide](docs/building/m1_vertical_slice_build.md).
 - For relations and querying, see the [M2 relations and querying guide](docs/building/m2_relations_querying.md).
 
