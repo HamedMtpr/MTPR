@@ -11,9 +11,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" Version="9.7.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <ProjectReference Include="..\..\src\Mtpr.Core\Mtpr.Core.csproj" />
     <ProjectReference Include="..\Mtpr.TestUtilities\Mtpr.TestUtilities.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\docs\examples\m2-library\*.json" Link="m2-library\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\docs\coding\m0_foundation_hardening.schema.json" Link="M0FoundationHardeningSchema\m0_foundation_hardening.schema.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

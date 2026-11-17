@@ -13,3 +13,8 @@
 - Added file-defined entities, SQLite table creation and a migration log, and generic REST CRUD endpoints.
 - Added metadata-driven validation and MTPR-coded API errors.
 - Added SQLite integration tests and xUnit test discovery for the solution.
+
+## M0 - Foundation Hardening
+
+- Added SDK selection, shared build settings and a GitHub Actions build and test workflow.
+- Documented the v0 entity format, proposed role and rule shapes, initial architecture decisions and measurable MVP acceptance criteria. Runtime schema validation and enforcement of roles and rules are not included.
