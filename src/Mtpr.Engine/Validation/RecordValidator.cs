@@ -70,7 +70,7 @@ public class RecordValidator : IRecordValidator
             values[field.Name] = value;
     }
 
-    private static bool tryConvert(FieldDefinition field, 
+    internal static bool tryConvert(FieldDefinition field, 
         JsonElement element,
         out object? value)
     {
@@ -115,17 +115,21 @@ public class RecordValidator : IRecordValidator
         }
     }
 
-    private static void checkConstraints(FieldDefinition field,
+    internal static void checkConstraints(FieldDefinition field,
         object value, 
         List<MtprException> errors)
     {
         if (value is string text)
         {
             if (field.MaxLength is { } max && text.Length > max)
-                errors.Add(error(MtprErrors.FieldTooLong, field.Name, max));
+                errors.Add(error(MtprErrors.FieldTooLong,
+                    field.Name, 
+                    max));
 
             if (field.MinLength is { } min && text.Length < min)
-                errors.Add(error(MtprErrors.FieldTooShort, field.Name, min));
+                errors.Add(error(MtprErrors.FieldTooShort, 
+                    field.Name, 
+                    min));
 
             return;
         }

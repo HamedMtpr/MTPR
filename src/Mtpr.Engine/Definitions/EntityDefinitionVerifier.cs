@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Errors;
+using Mtpr.Engine.Validation;
 
 namespace Mtpr.Engine.Definitions;
 
@@ -72,6 +74,19 @@ public partial class EntityDefinitionVerifier : IEntityDefinitionVerifier
             throw invalid(origin,
                 $"field '{field.Name}' has a minimum greater than its maximum");
 
+        if (field.Default.ValueKind != JsonValueKind.Undefined)
+        {
+            var errors = new List<MtprException>();
+            if (!RecordValidator.tryConvert(field,
+                    field.Default, 
+                    out var value))
+                throw invalid(origin,
+                    $"field '{field.Name}' has an invalid default type");
+            RecordValidator.checkConstraints(field, value!, errors);
+            if (errors.Count > 0)
+                throw invalid(origin, 
+                    $"field '{field.Name}' has a default outside its constraints");
+        }
         var isString = field.Type == FieldType.String;
 
         if (!isString && (field.MinLength is not null || field.MaxLength is not null))

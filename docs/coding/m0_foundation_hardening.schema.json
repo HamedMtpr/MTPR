@@ -73,6 +73,9 @@
         },
         "references": {
           "$ref": "#/$defs/relation"
+        },
+        "default": {
+          "type": ["string", "number", "boolean"]
         }
       },
       "allOf": [

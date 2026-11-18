@@ -2,6 +2,10 @@
 
 [Back to index](index.md)
 
+## M3 business rules (in progress)
+
+- Fields can specify a literal `default` applied when a create request omits the field. Defaults are checked against field type and constraints when definitions load; explicit null is not replaced. Updates do not apply defaults.
+
 ## M2 relations and querying
 
 - Existing entities can gain optional fields without losing data. Existing fields must stay unchanged and in order; required additions remain unsupported.

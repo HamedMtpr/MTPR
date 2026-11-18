@@ -16,7 +16,20 @@ public class EntityService(IDefinitionCatalog catalog,
         CancellationToken cancellationToken)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
-        var values = validator.Validate(definition, input, partial: false);
+        var withDefaults = new Dictionary<string, JsonElement>(input);
+        
+        foreach (var field in definition.Fields)
+            if (field.Default.ValueKind != JsonValueKind.Undefined &&
+                !withDefaults.Keys.Any(key => 
+                    string.Equals(key, 
+                        field.Name, 
+                        StringComparison.OrdinalIgnoreCase)))
+                withDefaults.Add(field.Name, field.Default);
+
+        var values = 
+            validator.Validate(definition, 
+                withDefaults, 
+                partial: false);
 
         return await store.InsertAsync(definition, values, cancellationToken);
     }
