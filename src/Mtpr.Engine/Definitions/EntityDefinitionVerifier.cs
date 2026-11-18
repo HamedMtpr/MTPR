@@ -3,6 +3,7 @@ using System.Text.Json;
 using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Errors;
 using Mtpr.Engine.Validation;
+using Mtpr.Engine.Rules;
 
 namespace Mtpr.Engine.Definitions;
 
@@ -33,6 +34,8 @@ public partial class EntityDefinitionVerifier : IEntityDefinitionVerifier
 
             verifyField(field, seen, origin);
         }
+
+        CreateRuleInterpreter.Verify(definition, origin);
 
         if (definition.Unique is null)
             throw invalid(origin, "unique cannot be null");

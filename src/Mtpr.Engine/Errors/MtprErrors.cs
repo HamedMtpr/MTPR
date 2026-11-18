@@ -54,6 +54,9 @@ public static class MtprErrors
     public static readonly MtprExceptionCode InvalidQuery =
         new("MTPR-2010", "Invalid query: {0}");
 
+    public static readonly MtprExceptionCode RuleRejected =
+        new("MTPR-2011", "{0}");
+
     public static readonly MtprExceptionCode InvalidDefinition =
         new("MTPR-3001",
             "Definition '{0}' is invalid: {1}");

@@ -4,6 +4,7 @@ using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Errors;
 using Mtpr.Engine.Persistence;
 using Mtpr.Engine.Validation;
+using Mtpr.Engine.Rules;
 
 namespace Mtpr.Engine;
 
@@ -31,6 +32,7 @@ public class EntityService(IDefinitionCatalog catalog,
                 withDefaults, 
                 partial: false);
 
+        CreateRuleInterpreter.Execute(definition, values);
         return await store.InsertAsync(definition, values, cancellationToken);
     }
 

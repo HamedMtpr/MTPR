@@ -8,6 +8,8 @@ public class EntityDefinition
 
     public List<List<string>> Unique { get; set; } = [];
 
+    public List<RuleDefinition> Rules { get; set; } = [];
+
     public FieldDefinition? FindField(string name)
         => Fields.FirstOrDefault(f => string.Equals(f.Name,
             name,
