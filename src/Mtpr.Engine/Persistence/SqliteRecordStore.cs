@@ -9,23 +9,33 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
 
     public async Task<IReadOnlyDictionary<string, object?>> InsertAsync(EntityDefinition definition,
         IReadOnlyDictionary<string, object?> values,
+        RecordRuleCallback rules,
         CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
         var columns = values.Keys.ToList();
 
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        rules("beforeCreate", values);
         await using var command = connection.CreateCommand();
-
+        command.Transaction = transaction;
         var names = string.Join(", ", columns.Select(c => $"\"{c}\"").Prepend($"\"{idKey}\""));
         var markers = string.Join(", ", columns.Select((_, i) => $"$p{i}").Prepend("$id"));
         command.CommandText = $"INSERT INTO \"{definition.Name}\" ({names}) VALUES ({markers})";
         command.Parameters.AddWithValue("$id", id.ToString());
         bind(command, columns, values);
-
         await command.ExecuteNonQueryAsync(cancellationToken);
 
-        return (await FindAsync(definition, id, cancellationToken))!;
+        var record = (await findAsync(connection, 
+            transaction, 
+            definition,
+            id, 
+            cancellationToken))!;
+
+        rules("afterCreate", record);
+        await transaction.CommitAsync(cancellationToken);
+        return record;
     }
 
     public async Task<IReadOnlyDictionary<string, object?>?> FindAsync(EntityDefinition definition,
@@ -33,15 +43,11 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
         CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT * FROM \"{definition.Name}\" WHERE \"{idKey}\" = $id";
-        command.Parameters.AddWithValue("$id", id.ToString());
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-        return await reader.ReadAsync(cancellationToken)
-            ? map(definition, reader)
-            : null;
+        return await findAsync(connection, 
+            null, 
+            definition,
+            id, 
+            cancellationToken);
     }
 
     public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> ListAsync(EntityDefinition definition,
@@ -53,68 +59,113 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
         var selected = SqliteQueryBuilder.Build(command, definition, query);
         command.Parameters.AddWithValue("$take", query.Take);
         command.Parameters.AddWithValue("$skip", query.Skip);
-
         var rows = new List<IReadOnlyDictionary<string, object?>>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
         while (await reader.ReadAsync(cancellationToken))
         {
             var row = map(definition, reader);
-            rows.Add(selected is null ? row : row.Where(p => selected.Contains(p.Key))
-                .ToDictionary(p => p.Key, p => p.Value));
+            rows.Add(selected is null 
+                ? row 
+                : row.Where(p => selected.Contains(p.Key))
+                    .ToDictionary(p => p.Key, p => p.Value));
         }
-
         return rows;
     }
 
-    public async Task<bool> UpdateAsync(EntityDefinition definition,
+    public async Task<IReadOnlyDictionary<string, object?>?> UpdateAsync(EntityDefinition definition,
         Guid id,
         IReadOnlyDictionary<string, object?> values,
+        RecordRuleCallback rules,
         CancellationToken cancellationToken)
     {
-        var columns = values.Keys.ToList();
-
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        var old = await findAsync(connection, transaction, definition, id, cancellationToken);
+        
+        if (old is null) 
+            return null;
 
-        if (columns.Count == 0)
-            command.CommandText = $"SELECT COUNT(*) FROM \"{definition.Name}\" WHERE \"{idKey}\" = $id";
-        else
+        var proposed = new Dictionary<string, object?>(old, 
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var value in values) 
+            proposed[value.Key] = value.Value;
+
+        rules("beforeUpdate", proposed);
+        var columns = values.Keys.ToList();
+        if (columns.Count > 0)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
             command.CommandText = $"UPDATE \"{definition.Name}\" SET " +
-                                  string.Join(", ", columns.Select((c, i) => $"\"{c}\" = $p{i}")) +
-                                  $" WHERE \"{idKey}\" = $id";
-
-        command.Parameters.AddWithValue("$id", id.ToString());
-        bind(command, columns, values);
-
-        if (columns.Count == 0)
-            return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken)) > 0;
-
-        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+                string.Join(", ", columns.Select((c, i) => $"\"{c}\" = $p{i}")) + $" WHERE \"{idKey}\" = $id";
+            command.Parameters.AddWithValue("$id", id.ToString());
+            bind(command, columns, values);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        var record = (await findAsync(connection, 
+            transaction, 
+            definition, 
+            id,
+            cancellationToken))!;
+        rules("afterUpdate", record);
+        await transaction.CommitAsync(cancellationToken);
+        return record;
     }
 
-    public async Task<bool> DeleteAsync(EntityDefinition definition,
-        Guid id,
-        CancellationToken cancellationToken)
+    public async Task<bool> DeleteAsync(EntityDefinition definition, Guid id,
+        RecordRuleCallback rules, CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        var old = await findAsync(connection,
+            transaction, 
+            definition,
+            id, 
+            cancellationToken);
+
+        if (old is null) 
+            return false;
+
+        rules("beforeDelete", old);
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = $"DELETE FROM \"{definition.Name}\" WHERE \"{idKey}\" = $id";
         command.Parameters.AddWithValue("$id", id.ToString());
+        await command.ExecuteNonQueryAsync(cancellationToken);
 
-        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+        rules("afterDelete", old);
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
-    private static void bind(SqliteCommand command,
-        List<string> columns,
+    private static async Task<IReadOnlyDictionary<string, object?>?> findAsync(SqliteConnection connection,
+        SqliteTransaction? transaction,
+        EntityDefinition definition,
+        Guid id, 
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"SELECT * FROM \"{definition.Name}\" WHERE \"{idKey}\" = $id";
+        command.Parameters.AddWithValue("$id", id.ToString());
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) 
+            ? map(definition, reader) 
+            : null;
+    }
+
+    private static void bind(SqliteCommand command, 
+        List<string> columns, 
         IReadOnlyDictionary<string, object?> values)
     {
         for (var i = 0; i < columns.Count; i++)
-            command.Parameters.AddWithValue($"$p{i}",
+            command.Parameters.AddWithValue($"$p{i}", 
                 SqliteTypeMap.ToDb(values[columns[i]]));
     }
 
-    private static IReadOnlyDictionary<string, object?> map(EntityDefinition definition,
+    private static IReadOnlyDictionary<string, object?> map(EntityDefinition definition, 
         SqliteDataReader reader)
     {
         var row = new Dictionary<string, object?>
@@ -124,9 +175,8 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
         };
 
         foreach (var field in definition.Fields)
-            row[field.Name] = SqliteTypeMap.FromDb(field.Type,
+            row[field.Name] = SqliteTypeMap.FromDb(field.Type, 
                 reader.GetValue(reader.GetOrdinal(field.Name)));
-
         return row;
     }
 }

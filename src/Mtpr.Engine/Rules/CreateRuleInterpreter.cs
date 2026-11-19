@@ -6,7 +6,7 @@ using Mtpr.Engine.Validation;
 
 namespace Mtpr.Engine.Rules;
 
-/// <summary>Interprets bounded, declarative create validation rules.</summary>
+/// <summary>Interprets bounded, declarative validation rules.</summary>
 public static class CreateRuleInterpreter
 {
     public static void Verify(EntityDefinition definition, string origin)
@@ -18,13 +18,18 @@ public static class CreateRuleInterpreter
         {
             var count = 0;
 
-            if (rule.Trigger != "beforeCreate" ||
+            if (rule is null || rule.Trigger is not ("beforeCreate" or 
+                    "afterCreate" or 
+                    "beforeUpdate" or 
+                    "afterUpdate" or 
+                    "beforeDelete" or 
+                    "afterDelete") ||
                     rule.Action is null ||
                     rule.Action.Type != "reject" || 
                     string.IsNullOrWhiteSpace(rule.Action.Message) ||
                     rule.Action.Message.Length > 500 ||
                     !verifyCondition(rule.Condition, definition, 0, ref count))
-                throw invalid(origin, "invalid or unsupported create rule");
+                throw invalid(origin, "invalid or unsupported rule");
         }
     }
 
@@ -97,10 +102,12 @@ public static class CreateRuleInterpreter
                    names.Contains(property.Name, StringComparer.Ordinal));
 
     public static void Execute(EntityDefinition definition,
-        IReadOnlyDictionary<string, object?> values)
+        IReadOnlyDictionary<string, object?> values,
+        string trigger)
     {
         foreach (var rule in 
                  definition.Rules.Where(rule => 
+                     rule.Trigger == trigger && 
                      evaluate(rule.Condition, definition, values)))
             throw new MtprException(MtprErrors.RuleRejected, 
                 new ExceptionParameter(rule.Action!.Message));

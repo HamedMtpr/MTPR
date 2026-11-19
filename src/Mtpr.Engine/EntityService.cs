@@ -32,8 +32,13 @@ public class EntityService(IDefinitionCatalog catalog,
                 withDefaults, 
                 partial: false);
 
-        CreateRuleInterpreter.Execute(definition, values);
-        return await store.InsertAsync(definition, values, cancellationToken);
+        return await store.InsertAsync(definition, 
+            values,
+            (trigger, record) =>
+                CreateRuleInterpreter.Execute(definition,
+                    record, 
+                    trigger),
+                cancellationToken);
     }
 
     public async Task<IReadOnlyDictionary<string, object?>> GetAsync(string entity,
@@ -70,17 +75,24 @@ public class EntityService(IDefinitionCatalog catalog,
         var definition = await catalog.GetAsync(entity, cancellationToken);
         var values = validator.Validate(definition, input, partial);
 
-        if (!await store.UpdateAsync(definition, id, values, cancellationToken))
-            throw notFound(definition, id);
-
-        return await GetAsync(entity, id, cancellationToken);
+        return await store.UpdateAsync(definition, id, values,
+            (trigger, record) => 
+                CreateRuleInterpreter.Execute(definition,
+                    record, 
+                    trigger), 
+                cancellationToken)
+            ?? throw notFound(definition, id);
     }
-
     public async Task DeleteAsync(string entity, Guid id, CancellationToken cancellationToken)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
 
-        if (!await store.DeleteAsync(definition, id, cancellationToken))
+        if (!await store.DeleteAsync(definition, id,
+            (trigger, record) =>
+                CreateRuleInterpreter.Execute(definition,
+                    record, 
+                    trigger), 
+                cancellationToken))
             throw notFound(definition, id);
     }
 

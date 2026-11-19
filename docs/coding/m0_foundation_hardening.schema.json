@@ -203,7 +203,7 @@
             "type": "object",
             "required": ["trigger", "condition", "action"],
             "properties": {
-              "trigger": { "const": "beforeCreate" },
+              "trigger": { "enum": ["beforeCreate", "afterCreate", "beforeUpdate", "afterUpdate", "beforeDelete", "afterDelete"] },
               "condition": { "$ref": "#/$defs/condition" },
               "action": {
                 "type": "object",

@@ -4,7 +4,7 @@
 
 ## M3 business rules (in progress)
 
-- Added bounded configuration-driven create rejection rules evaluated by an internal interpreter. Update/delete rules, computed values, and lifecycle transitions are not yet implemented.
+- Added bounded configuration-driven rejection rules before and after create, update, and delete. SQLite transactions roll back rejected operations, including cascades. Rules run only for the directly requested entity; cascaded changes do not execute related entity rules. Computed values and lifecycle transitions are not yet implemented.
 - Fields can specify a literal `default` applied when a create request omits the field. Defaults are checked against field type and constraints when definitions load; explicit null is not replaced. Updates do not apply defaults.
 
 ## M2 relations and querying
