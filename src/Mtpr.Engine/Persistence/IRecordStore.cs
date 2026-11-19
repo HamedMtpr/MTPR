@@ -3,7 +3,8 @@ using Mtpr.Engine.Definitions;
 namespace Mtpr.Engine.Persistence;
 
 public delegate void RecordRuleCallback(string trigger, 
-    IReadOnlyDictionary<string, object?> record);
+    IReadOnlyDictionary<string, object?> record,
+    IReadOnlyDictionary<string, object?>? previous);
 
 public interface IRecordStore
 {

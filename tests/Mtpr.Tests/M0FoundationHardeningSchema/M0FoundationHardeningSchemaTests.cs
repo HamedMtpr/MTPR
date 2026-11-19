@@ -37,6 +37,20 @@ public class M0FoundationHardeningSchemaTests : UnitTest
         using var document = JsonDocument.Parse(json);
         Schema.Evaluate(document.RootElement).IsValid.Should().BeTrue();
     }
+    [Fact]
+    public void Lifecycle_definition_is_valid()
+    {
+        const string json = """
+            { "name": "task", "fields": [{ "name": "status", "type": "string", "required": true }],
+              "lifecycle": { "field": "status", "initial": "draft", "states": ["draft", "done"],
+              "transitions": [{ "from": "draft", "to": "done" }] } }
+            """;
+        using var document = JsonDocument.Parse(json);
+        Schema.Evaluate(document.RootElement)
+            .IsValid
+            .Should()
+            .BeTrue();
+    }
     [Theory]
     [InlineData("author.json")]
     [InlineData("book.json")]

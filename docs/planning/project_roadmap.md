@@ -78,7 +78,7 @@ Local test results are the current milestone verification in the absence of CI. 
 - [ ] Rule model: trigger (before/after create/update/delete), condition, action.
 - [ ] Expression evaluation using an existing engine (for example JSON Logic or an established .NET expression library).
 - [ ] Computed and default values.
-- [ ] Simple state machine for entity lifecycle.
+- [x] Simple state machine for entity lifecycle.
 
 **Exit criteria:** Rules change behavior through configuration only, covered by tests.
 

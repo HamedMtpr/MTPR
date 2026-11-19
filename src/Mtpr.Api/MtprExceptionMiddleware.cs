@@ -58,7 +58,8 @@ public class MtprExceptionMiddleware(RequestDelegate next, ILogger<MtprException
             code == MtprErrors.RecordNotFound.Value)
             return StatusCodes.Status404NotFound;
 
-        if (code == MtprErrors.RuleRejected.Value)
+        if (code == MtprErrors.RuleRejected.Value || 
+            code == MtprErrors.InvalidTransition.Value)
             return StatusCodes.Status422UnprocessableEntity;
 
         if (code == MtprErrors.InvalidDefinition.Value ||

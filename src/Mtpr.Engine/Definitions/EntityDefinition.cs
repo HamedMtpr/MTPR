@@ -1,3 +1,5 @@
+using Mtpr.Engine.Definitions.Lifecycles;
+
 namespace Mtpr.Engine.Definitions;
 
 public class EntityDefinition
@@ -9,6 +11,8 @@ public class EntityDefinition
     public List<List<string>> Unique { get; set; } = [];
 
     public List<RuleDefinition> Rules { get; set; } = [];
+
+    public LifecycleDefinition? Lifecycle { get; set; }
 
     public FieldDefinition? FindField(string name)
         => Fields.FirstOrDefault(f => string.Equals(f.Name,

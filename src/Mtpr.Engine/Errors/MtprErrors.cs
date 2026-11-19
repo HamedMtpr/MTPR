@@ -57,6 +57,9 @@ public static class MtprErrors
     public static readonly MtprExceptionCode RuleRejected =
         new("MTPR-2011", "{0}");
 
+    public static readonly MtprExceptionCode InvalidTransition =
+        new("MTPR-2012", "Invalid lifecycle state or transition for field '{0}'.");
+
     public static readonly MtprExceptionCode InvalidDefinition =
         new("MTPR-3001",
             "Definition '{0}' is invalid: {1}");

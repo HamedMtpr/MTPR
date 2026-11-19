@@ -18,14 +18,25 @@ public class EntityService(IDefinitionCatalog catalog,
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
         var withDefaults = new Dictionary<string, JsonElement>(input);
+
+        if (definition.Lifecycle is { } lifecycle &&
+            !withDefaults.Keys.Any(key =>
+                string.Equals(key,
+                    lifecycle.Field,
+                    StringComparison.OrdinalIgnoreCase)))
+            withDefaults.Add(
+                definition.FindField(lifecycle.Field)!.Name, 
+                JsonSerializer.SerializeToElement(lifecycle.Initial));
         
-        foreach (var field in definition.Fields)
-            if (field.Default.ValueKind != JsonValueKind.Undefined &&
-                !withDefaults.Keys.Any(key => 
-                    string.Equals(key, 
-                        field.Name, 
-                        StringComparison.OrdinalIgnoreCase)))
-                withDefaults.Add(field.Name, field.Default);
+        foreach (var field in definition.Fields
+                     .Where(field => 
+                         field.Default.ValueKind != JsonValueKind.Undefined && 
+                         !withDefaults.Keys.Any(key => 
+                             string.Equals(key, 
+                                 field.Name, 
+                                 StringComparison.OrdinalIgnoreCase))))
+            withDefaults.Add(field.Name, 
+                field.Default);
 
         var values = 
             validator.Validate(definition, 
@@ -34,10 +45,8 @@ public class EntityService(IDefinitionCatalog catalog,
 
         return await store.InsertAsync(definition, 
             values,
-            (trigger, record) =>
-                CreateRuleInterpreter.Execute(definition,
-                    record, 
-                    trigger),
+            (trigger, record, previous) =>
+                runRules(definition, trigger, record, previous),
                 cancellationToken);
     }
 
@@ -76,10 +85,8 @@ public class EntityService(IDefinitionCatalog catalog,
         var values = validator.Validate(definition, input, partial);
 
         return await store.UpdateAsync(definition, id, values,
-            (trigger, record) => 
-                CreateRuleInterpreter.Execute(definition,
-                    record, 
-                    trigger), 
+            (trigger, record, previous) => 
+                runRules(definition, trigger, record, previous),
                 cancellationToken)
             ?? throw notFound(definition, id);
     }
@@ -88,12 +95,18 @@ public class EntityService(IDefinitionCatalog catalog,
         var definition = await catalog.GetAsync(entity, cancellationToken);
 
         if (!await store.DeleteAsync(definition, id,
-            (trigger, record) =>
-                CreateRuleInterpreter.Execute(definition,
-                    record, 
-                    trigger), 
+            (trigger, record, previous) => runRules(definition, trigger, record, previous),
                 cancellationToken))
             throw notFound(definition, id);
+    }
+
+    private static void runRules(EntityDefinition definition,
+        string trigger,
+        IReadOnlyDictionary<string, object?> record,
+        IReadOnlyDictionary<string, object?>? previous)
+    {
+        LifecycleEngine.Execute(definition, trigger, record, previous);
+        CreateRuleInterpreter.Execute(definition, record, trigger);
     }
 
     private static MtprException notFound(EntityDefinition definition, Guid id)

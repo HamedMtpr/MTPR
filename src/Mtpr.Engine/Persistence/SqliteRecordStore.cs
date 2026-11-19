@@ -17,7 +17,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
 
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
-        rules("beforeCreate", values);
+        rules("beforeCreate", values, null);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         var names = string.Join(", ", columns.Select(c => $"\"{c}\"").Prepend($"\"{idKey}\""));
@@ -33,7 +33,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
             id, 
             cancellationToken))!;
 
-        rules("afterCreate", record);
+        rules("afterCreate", record, null);
         await transaction.CommitAsync(cancellationToken);
         return record;
     }
@@ -80,7 +80,13 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
-        var old = await findAsync(connection, transaction, definition, id, cancellationToken);
+        
+        var old = 
+            await findAsync(connection, 
+                transaction, 
+                definition, 
+                id, 
+                cancellationToken);
         
         if (old is null) 
             return null;
@@ -91,7 +97,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
         foreach (var value in values) 
             proposed[value.Key] = value.Value;
 
-        rules("beforeUpdate", proposed);
+        rules("beforeUpdate", proposed, old);
         var columns = values.Keys.ToList();
         if (columns.Count > 0)
         {
@@ -108,7 +114,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
             definition, 
             id,
             cancellationToken))!;
-        rules("afterUpdate", record);
+        rules("afterUpdate", record, old);
         await transaction.CommitAsync(cancellationToken);
         return record;
     }
@@ -127,14 +133,14 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
         if (old is null) 
             return false;
 
-        rules("beforeDelete", old);
+        rules("beforeDelete", old, old);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = $"DELETE FROM \"{definition.Name}\" WHERE \"{idKey}\" = $id";
         command.Parameters.AddWithValue("$id", id.ToString());
         await command.ExecuteNonQueryAsync(cancellationToken);
 
-        rules("afterDelete", old);
+        rules("afterDelete", old, old);
 
         await transaction.CommitAsync(cancellationToken);
         return true;
