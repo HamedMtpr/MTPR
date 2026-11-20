@@ -2,6 +2,11 @@
 
 [Back to index](index.md)
 
+## M4 Security and Multi-Tenancy (in progress)
+
+- CRUD endpoints require a JWT bearer token. Configure `Mtpr:Authentication:Authority` (HTTPS) and `Mtpr:Authentication:Audience` before starting the API. Existing unauthenticated clients must obtain and send a token.
+- Authentication alone does not restrict authenticated users by role, field, row, or tenant. Audit logging is not yet implemented.
+
 ## M3 business rules
 
 - Added read-only computed decimal fields with bounded arithmetic expressions. Computed results are persisted on create and update; changing a definition does not backfill existing rows.

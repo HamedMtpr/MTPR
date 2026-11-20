@@ -1,8 +1,27 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mtpr.Api;
 using Mtpr.Engine;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
+builder.Services
+    .AddOptions<JwtBearerOptions>(
+        JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IConfiguration>((options, configuration) =>
+    {
+        options.Authority = 
+            configuration["Mtpr:Authentication:Authority"];
+        options.Audience = 
+            configuration["Mtpr:Authentication:Audience"];
+        options.RequireHttpsMetadata = true;
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddMtprEngine(
     p =>
@@ -20,9 +39,28 @@ builder.Services.AddMtprEngine(
 
 var app = builder.Build();
 
-app.UseMiddleware<MtprExceptionMiddleware>();
+var authority = 
+    app.Configuration["Mtpr:Authentication:Authority"];
+var audience = 
+    app.Configuration["Mtpr:Authentication:Audience"];
 
-var api = app.MapGroup("/api/{entity}");
+if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri)
+    || authorityUri.Scheme != Uri.UriSchemeHttps
+    || string.IsNullOrWhiteSpace(audience))
+{
+    throw new InvalidOperationException(
+        """
+        Configure an HTTPS Mtpr:
+        Authentication:Authority and Mtpr:Authentication:Audience.
+        """);
+}
+
+app.UseMiddleware<MtprExceptionMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
+
+var api = app.MapGroup("/api/{entity}")
+    .RequireAuthorization();
 
 api.MapPost("/",
     async (string entity,
