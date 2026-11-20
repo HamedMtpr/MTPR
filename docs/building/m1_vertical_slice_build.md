@@ -1,4 +1,4 @@
-# M1 vertical slice build
+# M1 vertical slice
 
 [Back to index](index.md)
 

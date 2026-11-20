@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Definitions;
+using Mtpr.Engine.Definitions.Fields;
 using Mtpr.Engine.Errors;
 
 namespace Mtpr.Engine.Validation;
@@ -20,7 +21,25 @@ public class RecordValidator : IRecordValidator
                 new ExceptionParameter(definition.Name)));
 
         foreach (var field in definition.Fields)
-            validateField(field, input, partial, values, errors);
+        {
+            if (field.Computed.ValueKind != JsonValueKind.Undefined)
+            {
+                if (input.Keys.Any(key => 
+                        string.Equals(key, 
+                            field.Name,
+                            StringComparison.OrdinalIgnoreCase)))
+                    errors.Add(new MtprException(
+                        MtprErrors.ComputedFieldReadOnly, 
+                        new ExceptionParameter(field.Name)));
+                continue;
+            }
+
+            validateField(field, 
+                input, 
+                partial,
+                values,
+                errors);
+        }
 
         if (errors.Count > 0)
             throw new EntityValidationException(errors);
@@ -70,7 +89,7 @@ public class RecordValidator : IRecordValidator
             values[field.Name] = value;
     }
 
-    private static bool tryConvert(FieldDefinition field, 
+    internal static bool tryConvert(FieldDefinition field, 
         JsonElement element,
         out object? value)
     {
@@ -115,17 +134,21 @@ public class RecordValidator : IRecordValidator
         }
     }
 
-    private static void checkConstraints(FieldDefinition field,
+    internal static void checkConstraints(FieldDefinition field,
         object value, 
         List<MtprException> errors)
     {
         if (value is string text)
         {
             if (field.MaxLength is { } max && text.Length > max)
-                errors.Add(error(MtprErrors.FieldTooLong, field.Name, max));
+                errors.Add(error(MtprErrors.FieldTooLong,
+                    field.Name, 
+                    max));
 
             if (field.MinLength is { } min && text.Length < min)
-                errors.Add(error(MtprErrors.FieldTooShort, field.Name, min));
+                errors.Add(error(MtprErrors.FieldTooShort, 
+                    field.Name, 
+                    min));
 
             return;
         }

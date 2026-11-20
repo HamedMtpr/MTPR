@@ -75,10 +75,10 @@ Local test results are the current milestone verification in the absence of CI. 
 
 ### M3 - Business Rules (Weeks 8-9)
 
-- [ ] Rule model: trigger (before/after create/update/delete), condition, action.
-- [ ] Expression evaluation using an existing engine (for example JSON Logic or an established .NET expression library).
-- [ ] Computed and default values.
-- [ ] Simple state machine for entity lifecycle.
+- [x] Rule model: trigger (before/after create/update/delete), condition, reject action.
+- [x] Bounded internal expression evaluation (see the M3 implementation notes for the decision).
+- [x] Computed and default values (computed decimal arithmetic).
+- [x] Simple state machine for entity lifecycle.
 
 **Exit criteria:** Rules change behavior through configuration only, covered by tests.
 

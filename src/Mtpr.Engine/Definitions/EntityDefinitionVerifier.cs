@@ -1,6 +1,10 @@
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using Mtpr.Core.Exceptions;
+using Mtpr.Engine.Definitions.Fields;
 using Mtpr.Engine.Errors;
+using Mtpr.Engine.Validation;
+using Mtpr.Engine.Rules;
 
 namespace Mtpr.Engine.Definitions;
 
@@ -31,6 +35,10 @@ public partial class EntityDefinitionVerifier : IEntityDefinitionVerifier
 
             verifyField(field, seen, origin);
         }
+
+        CreateRuleInterpreter.Verify(definition, origin);
+        LifecycleEngine.Verify(definition, origin);
+        ComputedValueEngine.Verify(definition, origin);
 
         if (definition.Unique is null)
             throw invalid(origin, "unique cannot be null");
@@ -72,6 +80,19 @@ public partial class EntityDefinitionVerifier : IEntityDefinitionVerifier
             throw invalid(origin,
                 $"field '{field.Name}' has a minimum greater than its maximum");
 
+        if (field.Default.ValueKind != JsonValueKind.Undefined)
+        {
+            var errors = new List<MtprException>();
+            if (!RecordValidator.tryConvert(field,
+                    field.Default, 
+                    out var value))
+                throw invalid(origin,
+                    $"field '{field.Name}' has an invalid default type");
+            RecordValidator.checkConstraints(field, value!, errors);
+            if (errors.Count > 0)
+                throw invalid(origin, 
+                    $"field '{field.Name}' has a default outside its constraints");
+        }
         var isString = field.Type == FieldType.String;
 
         if (!isString && (field.MinLength is not null || field.MaxLength is not null))

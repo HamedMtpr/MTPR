@@ -18,7 +18,7 @@ Use the existing HTTP REST endpoints under `/api/{entity}` for CRUD and querying
 
 ### ADR 0003: Rule expression evaluation
 
-Status: Proposed; selection deferred to M3.
+Status: Superseded for the initial M3 subset; see the M3 implementation notes for the decision to use a bounded internal interpreter.
 
 Use an existing, sandboxable expression evaluator rather than a custom language. JSON Logic is the leading candidate, but a specific .NET implementation has not been selected or evaluated. Before acceptance, compare maintained libraries for supported operators, deterministic behavior, resource limits, security, license compatibility, and integration with the rule model. Rules are not currently executed; the draft schema is not an implementation commitment.
 
@@ -42,7 +42,7 @@ These five checks apply to the first usable, configuration-driven MVP, after sec
 
 `m0_foundation_hardening.schema.json` describes the current one-entity-per-file format. The version is identified by the schema's `$id`; existing definition files need no version property. The runtime does not currently validate against JSON Schema, and its verifier also enforces cross-field and cross-file constraints (including case-insensitive uniqueness, valid references, constraint ordering and set-null compatibility). JSON Schema alone is not a substitute for runtime validation.
 
-The `role` and `rule` definitions in the same schema are drafts only. Neither is loaded or enforced by the runtime. Their shapes may change before M3/M4 and must not be used for security decisions. Relations in the implemented format are represented by `field.references` and join entities, rather than a separate relation file. The v0 schema is a documented authoring contract; loading a `$schema` property is optional and does not select a runtime version.
+The `role` and `rule` definitions in `$defs` remain drafts. The runtime supports a separate, limited entity `rules` property as documented in the M3 implementation notes. Roles and rules must not be used for security decisions. Relations in the implemented format are represented by `field.references` and join entities, rather than a separate relation file. The v0 schema is a documented authoring contract; loading a `$schema` property is optional and does not select a runtime version.
 
 ## Schema verification
 

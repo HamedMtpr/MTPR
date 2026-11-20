@@ -1,6 +1,7 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Mtpr.Engine.Definitions;
+namespace Mtpr.Engine.Definitions.Fields;
 
 public class FieldDefinition
 {
@@ -20,4 +21,8 @@ public class FieldDefinition
     public decimal? Max { get; set; }
 
     public FieldReference? References { get; set; }
+
+    public JsonElement Default { get; set; }
+
+    public JsonElement Computed { get; set; }
 }

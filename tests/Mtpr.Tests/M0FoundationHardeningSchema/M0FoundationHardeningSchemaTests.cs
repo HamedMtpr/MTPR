@@ -9,6 +9,59 @@ public class M0FoundationHardeningSchemaTests : UnitTest
     private static readonly JsonSchema Schema = JsonSchema.FromText(
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "M0FoundationHardeningSchema", "m0_foundation_hardening.schema.json")));
 
+    [Fact]
+    public void Create_rule_definition_is_valid()
+    {
+        const string json =
+            """
+            { 
+               "name": "task", 
+               "fields": [{ "name": "priority", "type": "int" }],
+              "rules": [
+              { 
+                 "trigger": "beforeCreate",
+                 "condition": 
+                 { 
+                    "operator": "greaterThan", 
+                    "left": { "field": "priority" },
+                     "right": { "value": 5 } 
+                 },
+                "action": 
+                { 
+                   "type": "reject", 
+                   "message": "Too high" 
+                } 
+              }] 
+            }
+            """;
+        using var document = JsonDocument.Parse(json);
+        Schema.Evaluate(document.RootElement).IsValid.Should().BeTrue();
+    }
+    [Fact]
+    public void Lifecycle_definition_is_valid()
+    {
+        const string json = """
+            { "name": "task", "fields": [{ "name": "status", "type": "string", "required": true }],
+              "lifecycle": { "field": "status", "initial": "draft", "states": ["draft", "done"],
+              "transitions": [{ "from": "draft", "to": "done" }] } }
+            """;
+        using var document = JsonDocument.Parse(json);
+        Schema.Evaluate(document.RootElement)
+            .IsValid
+            .Should()
+            .BeTrue();
+    }
+    [Fact]
+    public void Computed_field_definition_is_valid()
+    {
+        const string json = """
+            { "name": "line", "fields": [{ "name": "price", "type": "decimal" },
+              { "name": "total", "type": "decimal", "computed": {
+                "operator": "multiply", "left": { "field": "price" }, "right": { "value": 2 } } }] }
+            """;
+        using var document = JsonDocument.Parse(json);
+        Schema.Evaluate(document.RootElement).IsValid.Should().BeTrue();
+    }
     [Theory]
     [InlineData("author.json")]
     [InlineData("book.json")]

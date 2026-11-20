@@ -4,6 +4,7 @@ using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Errors;
 using Mtpr.Engine.Persistence;
 using Mtpr.Engine.Validation;
+using Mtpr.Engine.Rules;
 
 namespace Mtpr.Engine;
 
@@ -16,9 +17,40 @@ public class EntityService(IDefinitionCatalog catalog,
         CancellationToken cancellationToken)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
-        var values = validator.Validate(definition, input, partial: false);
+        var withDefaults = new Dictionary<string, JsonElement>(input);
 
-        return await store.InsertAsync(definition, values, cancellationToken);
+        if (definition.Lifecycle is { } lifecycle &&
+            !withDefaults.Keys.Any(key =>
+                string.Equals(key,
+                    lifecycle.Field,
+                    StringComparison.OrdinalIgnoreCase)))
+            withDefaults.Add(
+                definition.FindField(lifecycle.Field)!.Name,
+                JsonSerializer.SerializeToElement(lifecycle.Initial));
+
+        foreach (var field in definition.Fields
+                     .Where(field =>
+                         field.Default.ValueKind != JsonValueKind.Undefined &&
+                         !withDefaults.Keys.Any(key =>
+                             string.Equals(key,
+                                 field.Name,
+                                 StringComparison.OrdinalIgnoreCase))))
+            withDefaults.Add(field.Name,
+                field.Default);
+
+        Dictionary<string, object?> values =
+            new(validator.Validate(definition,
+                withDefaults,
+                partial: false),
+            StringComparer.OrdinalIgnoreCase);
+
+        ComputedValueEngine.Apply(definition, values);
+
+        return await store.InsertAsync(definition,
+            values,
+            (trigger, record, previous) =>
+                runRules(definition, trigger, record, previous),
+                cancellationToken);
     }
 
     public async Task<IReadOnlyDictionary<string, object?>> GetAsync(string entity,
@@ -55,18 +87,34 @@ public class EntityService(IDefinitionCatalog catalog,
         var definition = await catalog.GetAsync(entity, cancellationToken);
         var values = validator.Validate(definition, input, partial);
 
-        if (!await store.UpdateAsync(definition, id, values, cancellationToken))
-            throw notFound(definition, id);
-
-        return await GetAsync(entity, id, cancellationToken);
+        return await store.UpdateAsync(definition,
+                   id,
+                   values,
+            record =>
+                ComputedValueEngine.Apply(definition,
+                    record),
+            (trigger, record, previous) =>
+                runRules(definition, trigger, record, previous),
+                cancellationToken)
+            ?? throw notFound(definition, id);
     }
-
     public async Task DeleteAsync(string entity, Guid id, CancellationToken cancellationToken)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
 
-        if (!await store.DeleteAsync(definition, id, cancellationToken))
+        if (!await store.DeleteAsync(definition, id,
+            (trigger, record, previous) => runRules(definition, trigger, record, previous),
+                cancellationToken))
             throw notFound(definition, id);
+    }
+
+    private static void runRules(EntityDefinition definition,
+        string trigger,
+        IReadOnlyDictionary<string, object?> record,
+        IReadOnlyDictionary<string, object?>? previous)
+    {
+        LifecycleEngine.Execute(definition, trigger, record, previous);
+        CreateRuleInterpreter.Execute(definition, record, trigger);
     }
 
     private static MtprException notFound(EntityDefinition definition, Guid id)

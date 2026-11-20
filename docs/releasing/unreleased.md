@@ -2,6 +2,13 @@
 
 [Back to index](index.md)
 
+## M3 business rules
+
+- Added read-only computed decimal fields with bounded arithmetic expressions. Computed results are persisted on create and update; changing a definition does not backfill existing rows.
+- Added configuration-driven lifecycle states with an initial state and transactional directed transitions. Existing records are not migrated when lifecycle definitions change.
+- Added bounded configuration-driven rejection rules before and after create, update, and delete. SQLite transactions roll back rejected operations, including cascades. Rules run only for the directly requested entity; cascaded changes do not execute related entity rules.
+- Fields can specify a literal `default` applied when a create request omits the field. Defaults are checked against field type and constraints when definitions load; explicit null is not replaced. Updates do not apply defaults.
+
 ## M2 relations and querying
 
 - Existing entities can gain optional fields without losing data. Existing fields must stay unchanged and in order; required additions remain unsupported.

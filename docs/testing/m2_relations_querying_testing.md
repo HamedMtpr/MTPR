@@ -7,7 +7,7 @@
 - [M2 build guide](../building/m2_relations_querying.md)
 - [M2 deployment](../deployment/m2_relations_querying_deployment.md)
 - [M2 operations](../operations/m2_relations_querying_operations.md)
-- [Integration tests](../../tests/Mtpr.IntegrationTests/)
+- [Integration test project](../../tests/Mtpr.IntegrationTests/Mtpr.IntegrationTests.csproj)
 - [Library sample definitions(author.json)](../examples/m2-library/author.json)
 - [Library sample definitions(book.json)](../examples/m2-library/book.json)
 - [Library sample definitions(booktag.json)](../examples/m2-library/booktag.json)
