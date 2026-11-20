@@ -8,3 +8,4 @@ This document describes how to operate the deployed system.
 
 - [M1 vertical slice operations](m1_vertical_slice_operations.md)
 - [M2 relations and querying operations](m2_relations_querying_operations.md)
+- [M3 business rules operations](m3_business_rules_operations.md)

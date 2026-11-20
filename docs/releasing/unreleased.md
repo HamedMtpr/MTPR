@@ -2,7 +2,7 @@
 
 [Back to index](index.md)
 
-## M3 business rules (in progress)
+## M3 business rules
 
 - Added read-only computed decimal fields with bounded arithmetic expressions. Computed results are persisted on create and update; changing a definition does not backfill existing rows.
 - Added configuration-driven lifecycle states with an initial state and transactional directed transitions. Existing records are not migrated when lifecycle definitions change.

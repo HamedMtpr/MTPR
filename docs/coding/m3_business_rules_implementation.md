@@ -1,4 +1,4 @@
-# M3 - Business rules: implementation notes
+# M3 - Business rules: implementation
 
 [Back to index](index.md)
 
