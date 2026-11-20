@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,6 +15,7 @@ namespace Mtpr.IntegrationTests;
 public sealed class MtprApiFactory : WebApplicationFactory<Program>
 {
     public bool UseTestAuthentication { get; set; } = true;
+    public Action<JwtBearerOptions>? ConfigureJwtBearer { get; set; }
     public string Root { get; } = Directory.CreateTempSubdirectory("mtpr-").FullName;
 
     public string DefinitionsPath => Path.Combine(Root, "definitions");
@@ -34,6 +36,8 @@ public sealed class MtprApiFactory : WebApplicationFactory<Program>
                 }))
             .ConfigureServices(services =>
             {
+                if (ConfigureJwtBearer is not null)
+                    services.Configure(JwtBearerDefaults.AuthenticationScheme, ConfigureJwtBearer);
                 if (UseTestAuthentication)
                     services.AddAuthentication(options =>
                         {

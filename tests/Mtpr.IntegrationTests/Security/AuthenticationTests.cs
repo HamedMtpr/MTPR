@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Mtpr.TestUtilities;
 
-namespace Mtpr.IntegrationTests;
+namespace Mtpr.IntegrationTests.Security;
 
-public class AuthenticationTests
+public class AuthenticationTests : IntegrationTest
 {
     [Theory]
     [InlineData("GET")]

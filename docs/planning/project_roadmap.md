@@ -84,7 +84,7 @@ Local test results are the current milestone verification in the absence of CI. 
 
 ### M4 - Security and Multi-Tenancy (Weeks 10-11)
 
-- [ ] Authentication integration (OIDC/JWT).
+- [x] Authentication integration (OIDC/JWT).
 - [ ] Role-based access control at entity and field level.
 - [ ] Row-level filters.
 - [ ] Tenant isolation strategy.
