@@ -59,8 +59,32 @@ app.UseMiddleware<MtprExceptionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
+EntityPermissions entityPermissions = new(app.Configuration);
+
 var api = app.MapGroup("/api/{entity}")
     .RequireAuthorization();
+
+api.AddEndpointFilter(async (context, next) =>
+{
+    var entity = 
+        context.HttpContext
+            .Request
+            .RouteValues["entity"]?.ToString() ?? string.Empty;
+
+    var action = context.HttpContext.Request.Method switch
+    {
+        "POST" => "create",
+        "GET" => "read",
+        "PUT" or "PATCH" => "update",
+        "DELETE" => "delete",
+        _ => string.Empty
+    };
+    return entityPermissions.Allows(context.HttpContext.User,
+        entity,
+        action)
+        ? await next(context)
+        : Results.Forbid();
+});
 
 api.MapPost("/",
     async (string entity,

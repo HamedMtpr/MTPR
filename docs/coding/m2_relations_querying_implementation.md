@@ -4,7 +4,7 @@
 - [M2 relations and querying build guide](../building/m2_relations_querying.md)
 - [M2 testing](../testing/m2_relations_querying_testing.md)
 - [Entity definition](../../src/Mtpr.Engine/Definitions/EntityDefinition.cs)
-- [Field reference](../../src/Mtpr.Engine/Definitions/FieldReference.cs)
+- [Field reference](../../src/Mtpr.Engine/Definitions/Fields/FieldReference.cs)
 - [SQLite schema migrator](../../src/Mtpr.Engine/Persistence/SqliteSchemaMigrator.cs)
 - [SQLite query builder](../../src/Mtpr.Engine/Persistence/SqliteQueryBuilder.cs)
 

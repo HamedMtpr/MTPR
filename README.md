@@ -1,8 +1,6 @@
 # Project Summary
 
-MTPR is a metadata-driven backend generator designed to turn configuration and business rules into backend systems for a range of application domains. The current prototype supports file-defined entities, SQLite-backed CRUD, relations and querying, and configurable defaults, rules, computed decimal fields and lifecycle transitions. The API requires JWT authentication, but role-based authorization, tenant isolation and audit logging remain planned; use it only in a trusted environment.
-
-Configure `Mtpr:Authentication:Authority` as the HTTPS URL of an OpenID Connect issuer and `Mtpr:Authentication:Audience` as the intended API audience (for example, using the `Mtpr__Authentication__Authority` and `Mtpr__Authentication__Audience` environment variables). The API fails to start without both settings. All CRUD endpoints require a valid bearer token; authenticated users currently have unrestricted access to all entities and records.
+MTPR is a metadata-driven backend generator designed to turn configuration and business rules into backend systems for a range of application domains. The current prototype supports file-defined entities, SQLite-backed CRUD, relations and querying, and configurable defaults, rules, computed decimal fields and lifecycle transitions. The API requires JWT authentication and entity-level role grants. Field and row authorization, tenant isolation and audit logging remain planned; use it only in a trusted environment.
 
 - [Project roadmap](docs/planning/project_roadmap.md)
 ## Getting started
@@ -11,6 +9,7 @@ Configure `Mtpr:Authentication:Authority` as the HTTPS URL of an OpenID Connect 
 - [M1 vertical slice build](docs/building/m1_vertical_slice_build.md)
 - [M2 relations and querying](docs/building/m2_relations_querying.md)
 - [M3 business rules: build and run](docs/building/m3_business_rules_build.md)
+- [M4 security and multi-tenancy: build and run](docs/building/m4_security_multi_tenancy_build.md)
 
 ## Documentation
 

@@ -69,7 +69,7 @@ public partial class JwtValidationTests : IntegrationTest
                 ? "https://other.example.invalid" 
                 : issuer,
             audience: scenario == "audience" ? "other-api" : audience,
-            claims: [new Claim("sub", "test-user")],
+            claims: [new Claim("sub", "test-user"), new Claim(ClaimTypes.Role, "test-role")],
             notBefore: scenario == "not-yet-valid" 
                 ? now.AddMinutes(10) 
                 : now.AddMinutes(-20),

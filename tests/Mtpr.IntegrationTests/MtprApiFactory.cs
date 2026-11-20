@@ -15,6 +15,8 @@ namespace Mtpr.IntegrationTests;
 public sealed class MtprApiFactory : WebApplicationFactory<Program>
 {
     public bool UseTestAuthentication { get; set; } = true;
+    public bool GrantTestPermissions { get; set; } = true;
+    public Dictionary<string, string?> AdditionalConfiguration { get; } = [];
     public Action<JwtBearerOptions>? ConfigureJwtBearer { get; set; }
     public string Root { get; } = Directory.CreateTempSubdirectory("mtpr-").FullName;
 
@@ -23,9 +25,9 @@ public sealed class MtprApiFactory : WebApplicationFactory<Program>
     public MtprApiFactory() => Directory.CreateDirectory(DefinitionsPath);
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
-        => builder.ConfigureAppConfiguration((_, config) => 
-            config.AddInMemoryCollection(
-                new Dictionary<string, string?>
+        => builder.ConfigureAppConfiguration((_, config) =>
+        {
+            var settings = new Dictionary<string, string?>
                 {
                     ["Mtpr:Authentication:Authority"] =
                         "https://identity.example.invalid",
@@ -33,7 +35,14 @@ public sealed class MtprApiFactory : WebApplicationFactory<Program>
                     ["Mtpr:DefinitionsPath"] = DefinitionsPath,
                     ["Mtpr:ConnectionString"] =
                         $"Data Source={Path.Combine(Root, "test.db")};Pooling=False"
-                }))
+                };
+            if (GrantTestPermissions)
+                foreach (var (action, index) in new[] { "read", "create", "update", "delete" }.Select((action, index) => (action, index)))
+                    settings[$"Mtpr:Authorization:Roles:test-role:*:{index}"] = action;
+            foreach (var pair in AdditionalConfiguration)
+                settings[pair.Key] = pair.Value;
+            config.AddInMemoryCollection(settings);
+        })
             .ConfigureServices(services =>
             {
                 if (ConfigureJwtBearer is not null)
@@ -73,7 +82,7 @@ public sealed class TestAuthenticationHandler(
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "test-user")],
+            [new Claim(ClaimTypes.NameIdentifier, "test-user"), new Claim(ClaimTypes.Role, "test-role")],
             Scheme.Name);
         
         return Task.FromResult(AuthenticateResult.Success(

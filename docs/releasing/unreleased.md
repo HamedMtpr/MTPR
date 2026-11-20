@@ -6,7 +6,8 @@
 
 - CRUD endpoints require a JWT bearer token. Configure `Mtpr:Authentication:Authority` (HTTPS) and `Mtpr:Authentication:Audience` before starting the API. Existing unauthenticated clients must obtain and send a token.
 - Integration tests exercise OIDC discovery and verify valid tokens and rejection of invalid signatures, issuers, audiences, and token lifetimes using a simulated identity provider.
-- Authentication alone does not restrict authenticated users by role, field, row, or tenant. Audit logging is not yet implemented.
+- Entity-level role grants now control read, create, update and delete operations; access is denied by default. Configure grants under `Mtpr:Authorization:Roles` and restart after changes. Cascading deletes do not check permissions on affected entities.
+- Field and row authorization, tenant isolation, and audit logging are not yet implemented.
 
 ## M3 business rules
 

@@ -1,0 +1,35 @@
+# M4 security and multi-tenancy: deployment
+
+- [Back to index](index.md)
+- [M4 build and run](../building/m4_security_multi_tenancy_build.md)
+- [M4 operations](../operations/m4_security_multi_tenancy_operations.md)
+- [M4 implementation](../coding/m4_security_multi_tenancy_implementation.md)
+- [Sample order definition](../examples/m3-order/order.json)
+- [SDK version](../../global.json)
+
+This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation and audit logging remain unimplemented. Cascading changes to related entities are not separately authorized. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
+
+## Publish and configure
+
+From the repository root in PowerShell, publish the API and prepare a separate data directory:
+
+```powershell
+dotnet publish src/Mtpr.Api/Mtpr.Api.csproj -c Release -o ./artifacts/mtpr-m4-api
+New-Item -ItemType Directory -Force ./artifacts/m4-deploy/definitions | Out-Null
+Copy-Item docs/examples/m3-order/order.json ./artifacts/m4-deploy/definitions/order.json
+$env:Mtpr__DefinitionsPath = (Resolve-Path ./artifacts/m4-deploy/definitions).Path
+$env:Mtpr__ConnectionString = "Data Source=$((Resolve-Path ./artifacts/m4-deploy).Path)/mtpr.db"
+$env:Mtpr__Authentication__Authority = 'https://your-issuer.example'
+$env:Mtpr__Authentication__Audience = 'your-api-audience'
+$env:Mtpr__Authorization__Roles__reader__order__0 = 'read'
+$env:ASPNETCORE_URLS = 'http://127.0.0.1:5080'
+dotnet ./artifacts/mtpr-m4-api/Mtpr.Api.dll
+```
+
+Replace issuer and audience with values for your OIDC provider and API. Configure role grants appropriate to the deployment; the sample permits only reading orders. The API must be able to reach the issuer's HTTPS discovery and signing-key endpoints. Bind to a suitable interface and terminate TLS securely for network access. The example listens only on loopback.
+
+The service account needs read access to definitions and read/write access to the database directory and SQLite companion files. Keep definitions and database outside the publish directory, and back up the database and matching definitions together. A different host needs the published files, the matching runtime, definitions and host-specific absolute paths. Protect deployment configuration and the issuer's trust configuration from unauthorized modification.
+
+## Verify
+
+Use the manual checks in the M4 build guide with an appropriate token. Verify both an allowed request and a request with a valid token lacking the grant, as well as an unauthenticated request. A running process alone does not establish that discovery, authorization, definitions and database access work. Use a disposable database when testing writes. Stop the process before replacing its database or restoring backups.

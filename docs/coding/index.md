@@ -10,3 +10,4 @@ This document describes how to contribute code to the project.
 - [M1 vertical slice implementation](m1_vertical_slice_implementation.md)
 - [M2 relations and querying implementation](m2_relations_querying_implementation.md)
 - [M3 business rules implementation](m3_business_rules_implementation.md)
+- [M4 security and multi-tenancy implementation](m4_security_multi_tenancy_implementation.md)
