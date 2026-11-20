@@ -24,14 +24,36 @@ Entity definitions may declare up to 32 rules using `beforeCreate`, `afterCreate
     "left": { "field": "priority" },
     "right": { "value": 5 }
   },
-  "action": { "type": "reject", "message": "Priority is too high" }
+  "action": { "type": "reject",
+  "message": "Priority is too high" }
 }]
 ```
 
 Comparison operators are `equal`, `notEqual`, `greaterThan`, `greaterThanOrEqual`, `lessThan` and `lessThanOrEqual`. The right side is a literal matching the referenced field type. Ordering comparisons support numeric fields only; comparisons with a null field are false except equality and inequality. `and` and `or` contain a `conditions` array with 1 to 32 conditions. Each rule permits at most 128 condition nodes and depth 12. Invalid or unsupported rules reject the definition. Conditions do not invoke methods or access external resources. Field names are matched case-insensitively; strings are compared ordinally and case-sensitively. JSON Schema validates structure while runtime verification checks field references, types and limits.
 
-Only rejection actions are implemented. Computed values remain future M3 work; do not use rule definitions as authorization. The schema draft under `$defs.rule` is unrelated to the supported entity `rules` property.
+Only rejection actions are implemented; do not use rule definitions as authorization. The schema draft under `$defs.rule` is unrelated to the supported entity `rules` property.
 
+## Computed numeric fields
+
+A decimal field can declare a `computed` expression:
+
+```json
+{ 
+   "name": "total",
+   "type": "decimal", 
+   "required": true,
+   "computed": 
+  { 
+     "operator": "multiply",
+     "left": { "field": "price" },
+     "right": { "field": "quantity" }
+  } 
+}
+```
+
+Expressions support nested `add`, `subtract`, and `multiply` with field and decimal literal nodes. Source fields must be ordinary `int`, `long`, or `decimal` fields on the same entity; computed fields cannot depend on computed fields. An expression is limited to 64 nodes and depth 8. Computed fields cannot specify a default or reference. Clients cannot supply them in POST, PATCH, or PUT, including explicit null. A missing or null operand produces null; a required computed field rejects null. Decimal overflow and output constraints cause a validation failure.
+
+Computed values are calculated on create after defaults and input validation and before rules. On update they are recalculated from the merged record inside the same transaction, before lifecycle checks and rules, and stored together with the other changes. Reads, sorting and filtering use the stored value. Changing an expression or adding an optional computed field does not backfill existing records; each record is recomputed on its next successful update, so reads may contain earlier results or null until then.
 ## Lifecycle state machine
 
 An entity may define one lifecycle on a required string field:
@@ -58,4 +80,4 @@ The M0 recommendation to reuse an existing expression engine is superseded for t
 
 Create, update and delete use an immediate SQLite transaction. The before trigger runs before the write; after runs after the write but before commit. Rejection at either point rolls the operation back, including SQLite cascades. Update conditions see the proposed complete record (existing values merged with the request); delete conditions see the record being deleted. After-create and after-update conditions see the persisted values, while after-delete sees the pre-delete record. The record id is not available in condition expressions. Update responses are read inside the transaction.
 
-Rules run for the directly requested entity only. Cascading deletes and set-null changes performed by SQLite do not execute rules for affected related records. Actions must remain free of external side effects. An integration test exercises two concurrent updates against a combined rule. Computed values still require implementation and dedicated tests.
+Rules run for the directly requested entity only. Cascading deletes and set-null changes performed by SQLite do not execute rules for affected related records. Actions must remain free of external side effects. Integration tests exercise concurrent updates and computed value recalculation.

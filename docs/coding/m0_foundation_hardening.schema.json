@@ -8,6 +8,29 @@
       "type": "string",
       "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
     },
+    "computedExpression": {
+      "oneOf": [
+        {
+          "type": "object", "required": ["field"],
+          "properties": { "field": { "$ref": "#/$defs/identifier" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object", "required": ["value"],
+          "properties": { "value": { "type": "number" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object", "required": ["operator", "left", "right"],
+          "properties": {
+            "operator": { "enum": ["add", "subtract", "multiply"] },
+            "left": { "$ref": "#/$defs/computedExpression" },
+            "right": { "$ref": "#/$defs/computedExpression" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "condition": {
       "oneOf": [
         {
@@ -105,9 +128,19 @@
         },
         "default": {
           "type": ["string", "number", "boolean"]
+        },
+        "computed": {
+          "$ref": "#/$defs/computedExpression"
         }
       },
       "allOf": [
+        {
+          "if": { "required": ["computed"] },
+          "then": {
+            "properties": { "type": { "const": "decimal" } },
+            "not": { "anyOf": [{ "required": ["default"] }, { "required": ["references"] }] }
+          }
+        },
         {
           "if": {
             "required": [

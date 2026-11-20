@@ -25,25 +25,28 @@ public class EntityService(IDefinitionCatalog catalog,
                     lifecycle.Field,
                     StringComparison.OrdinalIgnoreCase)))
             withDefaults.Add(
-                definition.FindField(lifecycle.Field)!.Name, 
+                definition.FindField(lifecycle.Field)!.Name,
                 JsonSerializer.SerializeToElement(lifecycle.Initial));
-        
+
         foreach (var field in definition.Fields
-                     .Where(field => 
-                         field.Default.ValueKind != JsonValueKind.Undefined && 
-                         !withDefaults.Keys.Any(key => 
-                             string.Equals(key, 
-                                 field.Name, 
+                     .Where(field =>
+                         field.Default.ValueKind != JsonValueKind.Undefined &&
+                         !withDefaults.Keys.Any(key =>
+                             string.Equals(key,
+                                 field.Name,
                                  StringComparison.OrdinalIgnoreCase))))
-            withDefaults.Add(field.Name, 
+            withDefaults.Add(field.Name,
                 field.Default);
 
-        var values = 
-            validator.Validate(definition, 
-                withDefaults, 
-                partial: false);
+        Dictionary<string, object?> values =
+            new(validator.Validate(definition,
+                withDefaults,
+                partial: false),
+            StringComparer.OrdinalIgnoreCase);
 
-        return await store.InsertAsync(definition, 
+        ComputedValueEngine.Apply(definition, values);
+
+        return await store.InsertAsync(definition,
             values,
             (trigger, record, previous) =>
                 runRules(definition, trigger, record, previous),
@@ -84,8 +87,13 @@ public class EntityService(IDefinitionCatalog catalog,
         var definition = await catalog.GetAsync(entity, cancellationToken);
         var values = validator.Validate(definition, input, partial);
 
-        return await store.UpdateAsync(definition, id, values,
-            (trigger, record, previous) => 
+        return await store.UpdateAsync(definition,
+                   id,
+                   values,
+            record =>
+                ComputedValueEngine.Apply(definition,
+                    record),
+            (trigger, record, previous) =>
                 runRules(definition, trigger, record, previous),
                 cancellationToken)
             ?? throw notFound(definition, id);

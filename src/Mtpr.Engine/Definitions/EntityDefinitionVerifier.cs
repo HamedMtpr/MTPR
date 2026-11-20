@@ -37,6 +37,7 @@ public partial class EntityDefinitionVerifier : IEntityDefinitionVerifier
 
         CreateRuleInterpreter.Verify(definition, origin);
         LifecycleEngine.Verify(definition, origin);
+        ComputedValueEngine.Verify(definition, origin);
 
         if (definition.Unique is null)
             throw invalid(origin, "unique cannot be null");

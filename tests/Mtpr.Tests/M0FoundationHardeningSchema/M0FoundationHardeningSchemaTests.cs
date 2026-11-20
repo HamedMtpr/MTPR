@@ -51,6 +51,17 @@ public class M0FoundationHardeningSchemaTests : UnitTest
             .Should()
             .BeTrue();
     }
+    [Fact]
+    public void Computed_field_definition_is_valid()
+    {
+        const string json = """
+            { "name": "line", "fields": [{ "name": "price", "type": "decimal" },
+              { "name": "total", "type": "decimal", "computed": {
+                "operator": "multiply", "left": { "field": "price" }, "right": { "value": 2 } } }] }
+            """;
+        using var document = JsonDocument.Parse(json);
+        Schema.Evaluate(document.RootElement).IsValid.Should().BeTrue();
+    }
     [Theory]
     [InlineData("author.json")]
     [InlineData("book.json")]

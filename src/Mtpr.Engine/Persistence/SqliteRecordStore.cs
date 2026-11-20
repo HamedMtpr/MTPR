@@ -75,6 +75,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
     public async Task<IReadOnlyDictionary<string, object?>?> UpdateAsync(EntityDefinition definition,
         Guid id,
         IReadOnlyDictionary<string, object?> values,
+        RecordComputeCallback compute,
         RecordRuleCallback rules,
         CancellationToken cancellationToken)
     {
@@ -97,8 +98,21 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
         foreach (var value in values) 
             proposed[value.Key] = value.Value;
 
+        compute(proposed);
+
         rules("beforeUpdate", proposed, old);
-        var columns = values.Keys.ToList();
+        
+        Dictionary<string, object?> writes =
+            new(values, 
+                StringComparer.OrdinalIgnoreCase);
+        
+        foreach (var field in definition.Fields
+                     .Where(f => 
+                         f.Computed.ValueKind != System.Text.Json.JsonValueKind.Undefined))
+            writes[field.Name] = proposed[field.Name];
+
+        var columns = writes.Keys.ToList();
+
         if (columns.Count > 0)
         {
             await using var command = connection.CreateCommand();
@@ -106,7 +120,11 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
             command.CommandText = $"UPDATE \"{definition.Name}\" SET " +
                 string.Join(", ", columns.Select((c, i) => $"\"{c}\" = $p{i}")) + $" WHERE \"{idKey}\" = $id";
             command.Parameters.AddWithValue("$id", id.ToString());
-            bind(command, columns, values);
+            
+            bind(command, 
+                columns,
+                writes);
+
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         var record = (await findAsync(connection, 

@@ -23,4 +23,6 @@ public class FieldDefinition
     public FieldReference? References { get; set; }
 
     public JsonElement Default { get; set; }
+
+    public JsonElement Computed { get; set; }
 }

@@ -6,6 +6,8 @@ public delegate void RecordRuleCallback(string trigger,
     IReadOnlyDictionary<string, object?> record,
     IReadOnlyDictionary<string, object?>? previous);
 
+public delegate void RecordComputeCallback(IDictionary<string, object?> record);
+
 public interface IRecordStore
 {
     Task<IReadOnlyDictionary<string, object?>> InsertAsync(EntityDefinition definition,
@@ -25,6 +27,7 @@ public interface IRecordStore
     Task<IReadOnlyDictionary<string, object?>?> UpdateAsync(EntityDefinition definition,
         Guid id,
         IReadOnlyDictionary<string, object?> values,
+        RecordComputeCallback compute,
         RecordRuleCallback rules,
         CancellationToken cancellationToken);
 

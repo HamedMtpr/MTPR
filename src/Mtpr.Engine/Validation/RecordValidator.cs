@@ -20,7 +20,25 @@ public class RecordValidator : IRecordValidator
                 new ExceptionParameter(definition.Name)));
 
         foreach (var field in definition.Fields)
-            validateField(field, input, partial, values, errors);
+        {
+            if (field.Computed.ValueKind != JsonValueKind.Undefined)
+            {
+                if (input.Keys.Any(key => 
+                        string.Equals(key, 
+                            field.Name,
+                            StringComparison.OrdinalIgnoreCase)))
+                    errors.Add(new MtprException(
+                        MtprErrors.ComputedFieldReadOnly, 
+                        new ExceptionParameter(field.Name)));
+                continue;
+            }
+
+            validateField(field, 
+                input, 
+                partial,
+                values,
+                errors);
+        }
 
         if (errors.Count > 0)
             throw new EntityValidationException(errors);
