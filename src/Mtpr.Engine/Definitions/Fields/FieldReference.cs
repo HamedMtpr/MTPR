@@ -1,4 +1,4 @@
-namespace Mtpr.Engine.Definitions;
+namespace Mtpr.Engine.Definitions.Fields;
 
 public class FieldReference
 {

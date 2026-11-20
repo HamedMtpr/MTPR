@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Definitions;
+using Mtpr.Engine.Definitions.Fields;
 using Mtpr.Engine.Errors;
 using Mtpr.Engine.Validation;
 

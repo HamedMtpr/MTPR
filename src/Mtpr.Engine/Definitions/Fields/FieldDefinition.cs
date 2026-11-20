@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Mtpr.Engine.Definitions;
+namespace Mtpr.Engine.Definitions.Fields;
 
 public class FieldDefinition
 {

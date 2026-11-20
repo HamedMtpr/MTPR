@@ -1,4 +1,4 @@
-namespace Mtpr.IntegrationTests.ComputedValue;
+namespace Mtpr.IntegrationTests.ComputedValues;
 
 public partial class ComputedValueTests
 {
