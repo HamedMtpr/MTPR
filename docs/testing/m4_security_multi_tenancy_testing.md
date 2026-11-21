@@ -12,6 +12,7 @@
 - [Field write tests](../../tests/Mtpr.IntegrationTests/Security/FieldWrites/FieldWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
+- [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Cascade.cs)
 - [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
 
 ## Automated checks
@@ -26,7 +27,7 @@ dotnet test tests/Mtpr.IntegrationTests/Mtpr.IntegrationTests.csproj --no-restor
 
 JWT tests use simulated OIDC discovery and check valid tokens and invalid issuer, audience, signature and lifetime. Authorization tests exercise role, entity and operation grants and default denial. Field write tests check rejected fields on POST and PATCH, non-object bodies, the PUT `*` requirement, wildcard grants and grants for other roles. Field read tests check removal of ungranted fields from create, get, list and patch responses, rejected `fields`, `sort` and `filter` on hidden fields, the always-readable `id`, wildcard grants and grants for other roles. Audit tests check create, update and delete snapshots, subject and UTC timestamp, and confirm that rule rejection and an audit insertion failure leave the data and audit unchanged. They also check subject and issuer from a validated JWT, upgrade of a legacy audit table, and rollback of the upgrade when insertion fails. Tests use isolated SQLite databases and do not require an external identity provider.
 
-The tests do not establish interoperability with a particular identity provider or verify tenant isolation. Cascades, direct database changes and failed or denied requests are outside the current audit coverage.
+The tests do not establish interoperability with a particular identity provider or verify tenant isolation. Cascade audit tests cover cascaded deletes with `caused_by`, set-null updates, restricted deletes leaving no rows, denied requests and the append-only triggers. Direct database changes, reads and 401 responses are outside audit coverage.
 
 ## Manual checks
 

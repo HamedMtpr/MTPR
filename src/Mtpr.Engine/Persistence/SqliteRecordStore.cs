@@ -1,11 +1,13 @@
 using Microsoft.Data.Sqlite;
-using System.Text.Json;
 using Mtpr.Engine.Definitions;
+using Mtpr.Engine.Persistence.Audit;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
 
 namespace Mtpr.Engine.Persistence;
 
-public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAuditActorAccessor actor) : IRecordStore
+public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactory,
+    IAuditActorAccessor actor,
+    IDefinitionCatalog catalog) : IRecordStore
 {
     private const string idKey = EntityDefinitionVerifier.IdFieldName;
 
@@ -40,12 +42,10 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
         await auditAsync(connection, 
             transaction, 
             definition.Name, 
-            id, "" +
-                "create", 
+            id,
+            "create",
             null, 
             record, 
-            actor.Subject, 
-            actor.Issuer,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -155,8 +155,6 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
             "update", 
             old, 
             record,
-            actor.Subject, 
-            actor.Issuer,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -178,6 +176,16 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
             return false;
 
         rules("beforeDelete", old, old);
+
+        // The database executes the cascades and set-nulls itself; this only
+        // works out what it is going to touch so that every change is audited.
+        var plan = await planCascadeAsync(catalog,
+            connection,
+            transaction,
+            definition,
+            id,
+            cancellationToken);
+
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = $"DELETE FROM \"{definition.Name}\" WHERE \"{idKey}\" = $id";
@@ -186,6 +194,13 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
 
         rules("afterDelete", old, old);
 
+        await auditCascadeAsync(connection,
+            transaction,
+            definition.Name,
+            id,
+            plan,
+            cancellationToken);
+
         await auditAsync(connection,
             transaction,
             definition.Name,
@@ -193,93 +208,31 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
             "delete",
             old, 
             null, 
-            actor.Subject, 
-            actor.Issuer,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
 
-    private static async Task auditAsync(SqliteConnection connection, 
+    private Task auditAsync(SqliteConnection connection,
         SqliteTransaction transaction,
-        string entity, 
+        string entity,
         Guid id,
-        string operation, 
+        string operation,
         IReadOnlyDictionary<string, object?>? before,
         IReadOnlyDictionary<string, object?>? after,
-        string? subject,
-        string? issuer, 
-        CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            CREATE TABLE IF NOT EXISTS "__mtpr_audit" (
-                "sequence" INTEGER PRIMARY KEY AUTOINCREMENT
-                , "occurred_at" TEXT NOT NULL
-                , "entity" TEXT NOT NULL
-                , "record_id" TEXT NOT NULL
-                ,"operation" TEXT NOT NULL
-                , "subject" TEXT
-                , "subject_issuer" TEXT
-                , "before_json" TEXT
-                , "after_json" TEXT
-            );
-            """;
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-
-        command.CommandText = "PRAGMA table_info(\"__mtpr_audit\")";
-        var hasIssuer = false;
-
-        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-        {
-            while (await reader.ReadAsync(cancellationToken))
-                if (reader.GetString(1)
-                    .Equals("subject_issuer", StringComparison.OrdinalIgnoreCase))
-                    hasIssuer = true;
-        }
-
-        if (!hasIssuer)
-        {
-            command.CommandText = "ALTER TABLE \"__mtpr_audit\" ADD COLUMN \"subject_issuer\" TEXT";
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        command.CommandText = """
-            INSERT INTO "__mtpr_audit" ("occurred_at"
-                , "entity"
-                , "record_id"
-                , "operation"
-                , "subject"
-                , "subject_issuer"
-                , "before_json"
-                , "after_json")
-            VALUES ($time
-                , $entity
-                , $id
-                , $operation
-                , $subject
-                , $issuer
-                , $before
-                , $after);
-            """;
-        command.Parameters.AddWithValue("$time", DateTime.UtcNow.ToString("O"));
-        command.Parameters.AddWithValue("$entity", entity);
-        command.Parameters.AddWithValue("$id", id.ToString());
-        command.Parameters.AddWithValue("$operation", operation);
-        command.Parameters.AddWithValue("$subject", (object?)subject ?? DBNull.Value);
-        command.Parameters.AddWithValue("$issuer", (object?)issuer ?? DBNull.Value);
-        command.Parameters.AddWithValue("$before", before is null 
-            ? DBNull.Value 
-            : JsonSerializer.Serialize(before));
-        command.Parameters.AddWithValue("$after", after is null 
-            ? DBNull.Value 
-            : JsonSerializer.Serialize(after));
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken,
+        string? causedBy = null) =>
+        AuditTable.AppendAsync(connection,
+            transaction,
+            new AuditEntry(entity,
+                id.ToString(),
+                operation,
+                before,
+                after,
+                CausedBy: causedBy),
+            actor,
+            cancellationToken);
 
     private static async Task<IReadOnlyDictionary<string, object?>?> findAsync(SqliteConnection connection,
         SqliteTransaction? transaction,

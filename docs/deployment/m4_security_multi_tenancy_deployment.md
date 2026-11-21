@@ -8,7 +8,7 @@
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation and complete audit coverage remain unimplemented. Cascading changes to related entities are not separately authorized or audited. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
+This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation remains unimplemented. Cascaded changes to related entities are audited but not separately authorized. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
 
 Optional input-field write grants can restrict the properties submitted to POST and PATCH for a configured entity. They do not restrict indirect changes, and PUT requires a wildcard field grant. Configure them alongside entity grants as described in the operations guide and restart the API after changes.
 
@@ -37,7 +37,7 @@ The service account needs read access to definitions and read/write access to th
 
 The first successful direct write creates the audit table in the same SQLite database. It stores full before and after snapshots, which may contain sensitive data. Protect the database and its backups accordingly; the database owner can alter the audit records, and no external or tamper-evident audit sink is provided. A failure to write the audit entry rolls back the associated data change.
 
-Existing audit tables are upgraded with a nullable `subject_issuer` column during the next successful direct write. Back up the database and matching definitions before deployment. Existing rows retain a null issuer; new rows record the validated token's issuer when its claim is present. Ensure the service can alter the SQLite schema as well as write the database.
+Existing audit tables are upgraded with a nullable `subject_issuer` column during the next successful direct write. Back up the database and matching definitions before deployment. Existing rows retain a null issuer; new rows record the validated token's issuer when its claim is present. Ensure the service can alter the SQLite schema as well as write the database. The same upgrade adds `request_id`, `caused_by` and `detail` columns and the append-only triggers; back up first, since the triggers also block manual cleanup.
 
 ## Verify
 

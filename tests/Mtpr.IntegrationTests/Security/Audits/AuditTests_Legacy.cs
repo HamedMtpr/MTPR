@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Data.Sqlite;
+using Mtpr.TestUtilities;
 
 namespace Mtpr.IntegrationTests.Security.Audits;
 
-public partial class AuditTests
+public partial class AuditTests : IntegrationTest
 {
     [Fact]
     public async Task Failed_audit_insert_rolls_back_legacy_upgrade_and_record()

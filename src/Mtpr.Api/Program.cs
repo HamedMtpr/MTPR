@@ -1,3 +1,4 @@
+using Mtpr.Engine.Persistence.Audit;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mtpr.Api;
@@ -89,7 +90,7 @@ api.AddEndpointFilter(async (context, next) =>
     if (!entityPermissions.Allows(context.HttpContext.User,
             entity,
             action))
-        return Results.Forbid();
+        return await denyAsync(context, entity, $"entity:{action}");
 
     var method = context.HttpContext.Request.Method;
 
@@ -101,14 +102,14 @@ api.AddEndpointFilter(async (context, next) =>
                 entity,
                 method,
                 body))
-            return Results.Forbid();
+            return await denyAsync(context, entity, $"field-write:{method}");
     }
 
     if (method == "GET" &&
         !fieldReadPermissions.AllowsQuery(context.HttpContext.User,
             entity,
             context.HttpContext.Request.Query))
-        return Results.Forbid();
+        return await denyAsync(context, entity, "field-read:query");
 
     var result = await next(context);
 
@@ -191,3 +192,18 @@ api.MapDelete("/{id:guid}",
 });
 
 app.Run();
+return;
+
+static async Task<object?> denyAsync(EndpointFilterInvocationContext context,
+    string entity,
+    string detail)
+{
+    await context.HttpContext
+        .RequestServices
+        .GetRequiredService<AuditTrail>()
+        .RecordDeniedAsync(entity,
+            detail,
+            context.HttpContext.RequestAborted);
+
+    return Results.Forbid();
+}

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Persistence;
+using Mtpr.Engine.Persistence.Audit;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
 using Mtpr.Engine.Validation;
 
@@ -26,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDefinitionCatalog, DefinitionCatalog>();
         services.AddSingleton<IRecordValidator, RecordValidator>();
         services.TryAddSingleton<IAuditActorAccessor, EmptyAuditActorAccessor>();
+        services.AddSingleton<AuditTrail>();
         services.AddSingleton<IRecordStore, SqliteRecordStore>();
         services.AddSingleton<IEntityService, EntityService>();
 

@@ -17,4 +17,7 @@ public sealed class HttpAuditActorAccessor(IHttpContextAccessor context)
             ?.User
             .FindFirst("iss")
             ?.Value;
+
+    public string? RequestId =>
+        context.HttpContext?.TraceIdentifier;
 }

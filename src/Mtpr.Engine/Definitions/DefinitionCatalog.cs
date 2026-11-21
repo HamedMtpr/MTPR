@@ -26,6 +26,14 @@ public class DefinitionCatalog(IEntityDefinitionSource source,
                 new ExceptionParameter(entityName));
     }
 
+    public async Task<IReadOnlyList<EntityDefinition>> ListAsync(
+        CancellationToken cancellationToken)
+    {
+        await refreshAsync(cancellationToken);
+
+        return definitions.Values.ToList();
+    }
+
     private async Task refreshAsync(CancellationToken cancellationToken)
     {
         if (source.GetFingerprint() == loadedFingerprint)

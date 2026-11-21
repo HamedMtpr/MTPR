@@ -8,7 +8,7 @@
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-M4 is in progress. JWT authentication, entity-level role permissions, optional input-field write grants and audit records for direct writes are implemented; field read authorization, row authorization, tenant isolation and complete audit coverage are not. Run this prototype only in a trusted environment. Earlier milestone examples predate the current authentication requirement.
+M4 is in progress. JWT authentication, entity-level role permissions, optional field write and read grants, and audit records for writes, cascaded deletes, set-null changes and denied requests are implemented; row authorization and tenant isolation are not.
 
 ## Configure and run
 
@@ -53,4 +53,4 @@ The JWT integration tests simulate the identity provider; they do not require th
 
 The `__mtpr_audit` table is created in the SQLite database by the first successful direct create, update or delete. The read-only sample above does not create it. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.
 
-Direct writes also record the authenticated subject and issuer when those claims are available. An older audit table is upgraded on its next successful direct write; older rows retain a null issuer.
+Direct writes also record the authenticated subject and issuer when those claims are available. An older audit table is upgraded on its next successful direct write; older rows retain a null issuer. Cascaded deletes and set-null changes are recorded with `caused_by`, denied requests (HTTP 403) are recorded as `denied` rows, every row has a `request_id`, and the table rejects UPDATE and DELETE through triggers. The table gains the new columns and triggers on its next successful append.

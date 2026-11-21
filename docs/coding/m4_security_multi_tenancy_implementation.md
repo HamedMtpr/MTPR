@@ -18,6 +18,12 @@
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
 - [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
 - [SQLite record store](../../src/Mtpr.Engine/Persistence/SqliteRecordStore.cs)
+- [Cascade planning](../../src/Mtpr.Engine/Persistence/SqliteRecordStore.Cascade.cs)
+- [Audit table](../../src/Mtpr.Engine/Persistence/Audit/AuditTable.cs)
+- [Audit entry](../../src/Mtpr.Engine/Persistence/Audit/AuditEntry.cs)
+- [Audit trail for denials](../../src/Mtpr.Engine/Persistence/Audit/AuditTrail.cs)
+- [Audit actor accessor](../../src/Mtpr.Api/HttpAuditActorAccessor.cs)
+- [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Cascade.cs)
 
 ## Authentication
 
@@ -49,10 +55,18 @@ For API requests, `HttpAuditActorAccessor` obtains the principal's name-identifi
 
 An existing audit table without `subject_issuer` receives the nullable column during the next successful direct write, inside the write transaction. Existing rows retain their values and have a null issuer; it is not possible to infer their historical issuer. A failed write rolls the schema change back as well. The default interface implementation returns null for issuer so existing custom accessors can continue to operate.
 
-Only the directly requested engine operation is recorded. SQLite cascaded deletes and set-null changes, direct database writes, schema changes, reads, denied access and failed requests are not recorded. There is no audit query API, retention policy or tamper detection. Audit coverage is therefore incomplete and the M4 audit milestone remains open.
+### Cascades, denials and integrity
+
+`SqliteSchemaMigrator` emits `ON DELETE CASCADE`, `SET NULL` or `RESTRICT` clauses and the connection enables `foreign_keys`, so SQLite itself performs these actions. The store leaves that to the database and only works out beforehand what it will touch. Before the root `DELETE`, `planCascadeAsync` walks the referencing fields breadth-first inside the delete transaction and snapshots the affected rows. A visited set keyed by entity and id ends reference cycles. Rows that are cascade-deleted are never also reported as set-null, so the result does not depend on traversal order. After the `afterDelete` rules, `auditCascadeAsync` appends set-null changes as `update` rows, then cascaded deletes children first, then the root delete. Cascaded rows carry `caused_by` set to `entity/id` of the root. All rows join the same transaction, so a failed audit insert rolls back the whole delete. A `Restrict` reference makes the database reject the delete; the transaction rolls back, nothing is audited, and the middleware returns HTTP 409 with `MTPR-2009`.
+
+Access denials (HTTP 403 for entity grants, field writes and field reads) are appended by `AuditTrail` as `denied` rows with an empty record ID and the reason in `detail`, for example `entity:create`, `field-write:PATCH` or `field-read:query`. `AuditTrail` uses its own connection and transaction because the request has no data transaction. If the append fails the request fails instead of silently allowing an unlogged denial.
+
+Every row also stores `request_id`, taken from `HttpContext.TraceIdentifier`, so rows of one request can be correlated. `AuditTable.EnsureAsync` creates the table, adds missing `subject_issuer`, `request_id`, `caused_by` and `detail` columns, and then creates the triggers `__mtpr_audit_no_update` and `__mtpr_audit_no_delete`, which abort with "The audit log is append-only." The columns are upgraded first because adding a column is not an update. The check runs on every append inside the caller's transaction.
+
+Limits: the plan is computed before the database acts, so a concurrent writer between the two steps could make it differ, although SQLite serializes writers. The triggers stop ordinary SQL but not someone who drops them or replaces the file, so the log is append-only rather than tamper-proof. Reads, deletes of missing records, authentication failures (401) and writes rolled back by rule rejections are not recorded. There is no audit query API, retention policy or external sink. Row-level filters and tenant isolation remain open in M4.
 
 ## Current scope and tests
 
-Field read authorization, row filters and tenant isolation are not implemented. All records and output fields are accessible to a user with the applicable entity read grant; write responses also expose fields. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
+Row filters and tenant isolation are not implemented. All records are accessible to a user with the applicable entity read grant, and fields are limited only where field grants are configured. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
 
 Integration tests use isolated SQLite databases. JWT tests exercise the real bearer handler with a simulated discovery endpoint and signing keys, including valid and invalid issuer, audience, signature and lifetime cases. Entity authorization tests cover role, entity and operation grants and default denial. Test authentication is limited to the test host. These tests do not establish interoperability with a particular external identity provider or prove tenant isolation.
