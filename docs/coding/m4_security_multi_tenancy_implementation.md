@@ -9,6 +9,8 @@
 - [Entity permissions](../../src/Mtpr.Api/EntityPermissions.cs)
 - [JWT validation tests](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests.cs)
 - [Entity authorization tests](../../tests/Mtpr.IntegrationTests/Security/EntityAuthorizationTests.cs)
+- [Field write permissions](../../src/Mtpr.Api/Authorization/FieldWritePermissions.cs)
+- [Field write tests](../../tests/Mtpr.IntegrationTests/Security/FieldWrites/FieldWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
 - [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
@@ -26,6 +28,14 @@ The endpoint filter maps list and single-record GET to `read`, POST to `create`,
 
 These checks protect the HTTP endpoint group; direct calls to the engine or database do not pass through the filter. Database cascades and set-null actions on related records do not check the affected entity's grants. Create and update responses can include fields even when the caller does not have the entity's `read` grant.
 
+## Field write grants
+
+`Mtpr:Authorization:FieldWrites` optionally lists allowed input fields by entity and role. A configured entity denies writes from roles without a field grant. Matching role grants are combined, field and entity names are case-insensitive, and `*` in a role's field list grants all input fields for that entity. An entity with no field policy retains the existing entity-level behavior. The policy is loaded at startup and changes require restart. A wildcard entity is not supported.
+
+The endpoint filter first requires the entity operation grant. On POST and PATCH, every property in an object body must be in the caller's field grants; otherwise the request returns HTTP 403. On PUT the caller must have the `*` field grant, because omitted fields can also be modified. A body that is not a JSON object (for example an array or a missing body) is rejected with HTTP 403 on configured entities. The normal engine validation continues to reject unknown, duplicate and computed input fields.
+
+These grants apply only to properties supplied directly through the API, not to the stored values of fields in general. Defaults, lifecycle initial values, computed values, and SQLite cascades can still modify fields that a caller cannot supply. Direct engine or database access bypasses the endpoint filter. The policy does not restrict output, filtering or sorting by a field. It is not field confidentiality or complete field-level authorization.
+
 ## Transactional audit records
 
 The SQLite record store creates `__mtpr_audit` on the first successful direct write. Create, update and delete append one entry after their rules succeed and before the same transaction commits. If audit insertion fails, the data write rolls back. Each row contains an incrementing sequence, UTC timestamp, entity, record ID, operation, optional subject and subject issuer, and JSON snapshots before and after the operation. A successful update is recorded even if its values did not change. Reads and failed or rejected writes do not append an entry.
@@ -38,6 +48,6 @@ Only the directly requested engine operation is recorded. SQLite cascaded delete
 
 ## Current scope and tests
 
-Field-level authorization, row filters and tenant isolation are not implemented. All records and fields are accessible to a user with the applicable entity operation grant. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
+Field read authorization, row filters and tenant isolation are not implemented. All records and output fields are accessible to a user with the applicable entity read grant; write responses also expose fields. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
 
 Integration tests use isolated SQLite databases. JWT tests exercise the real bearer handler with a simulated discovery endpoint and signing keys, including valid and invalid issuer, audience, signature and lifetime cases. Entity authorization tests cover role, entity and operation grants and default denial. Test authentication is limited to the test host. These tests do not establish interoperability with a particular external identity provider or prove tenant isolation.

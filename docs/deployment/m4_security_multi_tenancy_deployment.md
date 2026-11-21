@@ -10,6 +10,8 @@
 
 This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation and complete audit coverage remain unimplemented. Cascading changes to related entities are not separately authorized or audited. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
 
+Optional input-field write grants can restrict the properties submitted to POST and PATCH for a configured entity. They do not restrict field reads or indirect changes, and PUT requires a wildcard field grant. Configure them alongside entity grants as described in the operations guide and restart the API after changes.
+
 ## Publish and configure
 
 From the repository root in PowerShell, publish the API and prepare a separate data directory:

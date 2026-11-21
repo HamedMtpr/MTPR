@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mtpr.Api;
+using Mtpr.Api.Authorization;
 using Mtpr.Engine;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
 
@@ -63,6 +64,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 EntityPermissions entityPermissions = new(app.Configuration);
+FieldWritePermissions fieldWritePermissions = new(app.Configuration);
 
 var api = app.MapGroup("/api/{entity}")
     .RequireAuthorization();
@@ -82,11 +84,26 @@ api.AddEndpointFilter(async (context, next) =>
         "DELETE" => "delete",
         _ => string.Empty
     };
-    return entityPermissions.Allows(context.HttpContext.User,
-        entity,
-        action)
-        ? await next(context)
-        : Results.Forbid();
+
+    if (!entityPermissions.Allows(context.HttpContext.User,
+            entity,
+            action))
+        return Results.Forbid();
+
+    var method = context.HttpContext.Request.Method;
+
+    if (method is "POST" or "PUT" or "PATCH")
+    {
+        var body = context.Arguments.OfType<JsonElement>().FirstOrDefault();
+
+        if (!fieldWritePermissions.Allows(context.HttpContext.User,
+                entity,
+                method,
+                body))
+            return Results.Forbid();
+    }
+
+    return await next(context);
 });
 
 api.MapPost("/",
