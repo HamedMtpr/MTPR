@@ -4,10 +4,11 @@
 - [M4 implementation](../coding/m4_security_multi_tenancy_implementation.md)
 - [M4 deployment](../deployment/m4_security_multi_tenancy_deployment.md)
 - [M4 operations](../operations/m4_security_multi_tenancy_operations.md)
+- [M4 testing](../testing/m4_security_multi_tenancy_testing.md)
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-M4 is in progress. JWT authentication and entity-level role permissions are implemented; field and row authorization, tenant isolation and audit logging are not. Run this prototype only in a trusted environment. Earlier milestone examples predate the current authentication requirement.
+M4 is in progress. JWT authentication, entity-level role permissions and audit records for direct writes are implemented; field and row authorization, tenant isolation and complete audit coverage are not. Run this prototype only in a trusted environment. Earlier milestone examples predate the current authentication requirement.
 
 ## Configure and run
 
@@ -47,3 +48,5 @@ dotnet test MTPR.slnx --no-restore
 ```
 
 The JWT integration tests simulate the identity provider; they do not require the external provider configured for the manual check.
+
+The `__mtpr_audit` table is created in the SQLite database by the first successful direct create, update or delete. The read-only sample above does not create it. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.

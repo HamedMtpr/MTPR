@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mtpr.Api;
 using Mtpr.Engine;
+using Mtpr.Engine.Persistence.AuditActorAccessors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,8 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuditActorAccessor, HttpAuditActorAccessor>();
 
 builder.Services.AddMtprEngine(
     p =>

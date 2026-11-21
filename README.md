@@ -1,6 +1,6 @@
 # Project Summary
 
-MTPR is a metadata-driven backend generator designed to turn configuration and business rules into backend systems for a range of application domains. The current prototype supports file-defined entities, SQLite-backed CRUD, relations and querying, and configurable defaults, rules, computed decimal fields and lifecycle transitions. The API requires JWT authentication and entity-level role grants. Field and row authorization, tenant isolation and audit logging remain planned; use it only in a trusted environment.
+MTPR is a metadata-driven backend generator designed to turn configuration and business rules into backend systems for a range of application domains. The current prototype supports file-defined entities, SQLite-backed CRUD, relations and querying, and configurable defaults, rules, computed decimal fields and lifecycle transitions. The API requires JWT authentication and entity-level role grants. Field and row authorization, tenant isolation and comprehensive audit logging remain planned; use it only in a trusted environment.
 
 - [Project roadmap](docs/planning/project_roadmap.md)
 ## Getting started

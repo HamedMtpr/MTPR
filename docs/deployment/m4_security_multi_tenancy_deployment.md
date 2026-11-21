@@ -4,10 +4,11 @@
 - [M4 build and run](../building/m4_security_multi_tenancy_build.md)
 - [M4 operations](../operations/m4_security_multi_tenancy_operations.md)
 - [M4 implementation](../coding/m4_security_multi_tenancy_implementation.md)
+- [M4 testing](../testing/m4_security_multi_tenancy_testing.md)
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation and audit logging remain unimplemented. Cascading changes to related entities are not separately authorized. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
+This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation and complete audit coverage remain unimplemented. Cascading changes to related entities are not separately authorized or audited. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
 
 ## Publish and configure
 
@@ -29,6 +30,8 @@ dotnet ./artifacts/mtpr-m4-api/Mtpr.Api.dll
 Replace issuer and audience with values for your OIDC provider and API. Configure role grants appropriate to the deployment; the sample permits only reading orders. The API must be able to reach the issuer's HTTPS discovery and signing-key endpoints. Bind to a suitable interface and terminate TLS securely for network access. The example listens only on loopback.
 
 The service account needs read access to definitions and read/write access to the database directory and SQLite companion files. Keep definitions and database outside the publish directory, and back up the database and matching definitions together. A different host needs the published files, the matching runtime, definitions and host-specific absolute paths. Protect deployment configuration and the issuer's trust configuration from unauthorized modification.
+
+The first successful direct write creates the audit table in the same SQLite database. It stores full before and after snapshots, which may contain sensitive data. Protect the database and its backups accordingly; the database owner can alter the audit records, and no external or tamper-evident audit sink is provided. A failure to write the audit entry rolls back the associated data change.
 
 ## Verify
 

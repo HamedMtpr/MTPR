@@ -1,9 +1,11 @@
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 using Mtpr.Engine.Definitions;
+using Mtpr.Engine.Persistence.AuditActorAccessors;
 
 namespace Mtpr.Engine.Persistence;
 
-public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRecordStore
+public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAuditActorAccessor actor) : IRecordStore
 {
     private const string idKey = EntityDefinitionVerifier.IdFieldName;
 
@@ -34,6 +36,17 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
             cancellationToken))!;
 
         rules("afterCreate", record, null);
+
+        await auditAsync(connection, 
+            transaction, 
+            definition.Name, 
+            id, "" +
+                "create", 
+            null, 
+            record, 
+            actor.Subject, 
+            cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
         return record;
     }
@@ -133,6 +146,17 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
             id,
             cancellationToken))!;
         rules("afterUpdate", record, old);
+
+        await auditAsync(connection,
+            transaction, 
+            definition.Name,
+            id, 
+            "update", 
+            old, 
+            record,
+            actor.Subject, 
+            cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
         return record;
     }
@@ -160,8 +184,65 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory) : IRe
 
         rules("afterDelete", old, old);
 
+        await auditAsync(connection,
+            transaction,
+            definition.Name,
+            id, 
+            "delete",
+            old, 
+            null, 
+            actor.Subject, 
+            cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
         return true;
+    }
+
+    private static async Task auditAsync(SqliteConnection connection, SqliteTransaction transaction,
+        string entity, Guid id, string operation, IReadOnlyDictionary<string, object?>? before,
+        IReadOnlyDictionary<string, object?>? after, string? subject, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "__mtpr_audit" (
+                "sequence" INTEGER PRIMARY KEY AUTOINCREMENT
+                , "occurred_at" TEXT NOT NULL
+                , "entity" TEXT NOT NULL
+                , "record_id" TEXT NOT NULL
+                ,"operation" TEXT NOT NULL
+                , "subject" TEXT
+                , "before_json" TEXT
+                , "after_json" TEXT
+            );
+            INSERT INTO "__mtpr_audit" ("occurred_at"
+                , "entity"
+                , "record_id"
+                , "operation"
+                , "subject"
+                , "before_json"
+                , "after_json")
+            VALUES ($time
+                , $entity
+                , $id
+                , $operation
+                , $subject
+                , $before
+                , $after);
+            """;
+        command.Parameters.AddWithValue("$time", DateTime.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$entity", entity);
+        command.Parameters.AddWithValue("$id", id.ToString());
+        command.Parameters.AddWithValue("$operation", operation);
+        command.Parameters.AddWithValue("$subject", (object?)subject ?? DBNull.Value);
+        command.Parameters.AddWithValue("$before", before is null 
+            ? DBNull.Value 
+            : JsonSerializer.Serialize(before));
+        command.Parameters.AddWithValue("$after", after is null 
+            ? DBNull.Value 
+            : JsonSerializer.Serialize(after));
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task<IReadOnlyDictionary<string, object?>?> findAsync(SqliteConnection connection,
