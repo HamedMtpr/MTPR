@@ -50,3 +50,5 @@ dotnet test MTPR.slnx --no-restore
 The JWT integration tests simulate the identity provider; they do not require the external provider configured for the manual check.
 
 The `__mtpr_audit` table is created in the SQLite database by the first successful direct create, update or delete. The read-only sample above does not create it. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.
+
+Direct writes also record the authenticated subject and issuer when those claims are available. An older audit table is upgraded on its next successful direct write; older rows retain a null issuer.

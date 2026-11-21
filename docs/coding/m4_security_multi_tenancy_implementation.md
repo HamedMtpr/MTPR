@@ -9,7 +9,9 @@
 - [Entity permissions](../../src/Mtpr.Api/EntityPermissions.cs)
 - [JWT validation tests](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests.cs)
 - [Entity authorization tests](../../tests/Mtpr.IntegrationTests/Security/EntityAuthorizationTests.cs)
-- [Audit tests](../../tests/Mtpr.IntegrationTests/Security/AuditTests.cs)
+- [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
+- [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
+- [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
 - [SQLite record store](../../src/Mtpr.Engine/Persistence/SqliteRecordStore.cs)
 
 ## Authentication
@@ -26,9 +28,11 @@ These checks protect the HTTP endpoint group; direct calls to the engine or data
 
 ## Transactional audit records
 
-The SQLite record store creates `__mtpr_audit` on the first successful direct write. Create, update and delete append one entry after their rules succeed and before the same transaction commits. If audit insertion fails, the data write rolls back. Each row contains an incrementing sequence, UTC timestamp, entity, record ID, operation, optional subject, and JSON snapshots before and after the operation. A successful update is recorded even if its values did not change. Reads and failed or rejected writes do not append an entry.
+The SQLite record store creates `__mtpr_audit` on the first successful direct write. Create, update and delete append one entry after their rules succeed and before the same transaction commits. If audit insertion fails, the data write rolls back. Each row contains an incrementing sequence, UTC timestamp, entity, record ID, operation, optional subject and subject issuer, and JSON snapshots before and after the operation. A successful update is recorded even if its values did not change. Reads and failed or rejected writes do not append an entry.
 
-For API requests, `HttpAuditActorAccessor` obtains the principal's name-identifier claim; a token without that claim produces a null subject. Other engine hosts can register an `IAuditActorAccessor`; the default reports a null subject. The stored subject has no accompanying issuer and must not be assumed globally unique. Snapshots contain all record fields and may include sensitive values. The audit table is in the same database and is neither tamper-proof nor independently retained.
+For API requests, `HttpAuditActorAccessor` obtains the principal's name-identifier and `iss` claims; missing claims produce null values. The normal bearer handler validates the token issuer before a write reaches the engine. Other engine hosts can register an `IAuditActorAccessor`; the default reports null values, and custom accessors are responsible for their own identity provenance. The optional issuer distinguishes equal subjects from different issuers, but neither field is guaranteed to exist. Snapshots contain all record fields and may include sensitive values. The audit table is in the same database and is neither tamper-proof nor independently retained.
+
+An existing audit table without `subject_issuer` receives the nullable column during the next successful direct write, inside the write transaction. Existing rows retain their values and have a null issuer; it is not possible to infer their historical issuer. A failed write rolls the schema change back as well. The default interface implementation returns null for issuer so existing custom accessors can continue to operate.
 
 Only the directly requested engine operation is recorded. SQLite cascaded deletes and set-null changes, direct database writes, schema changes, reads, denied access and failed requests are not recorded. There is no audit query API, retention policy or tamper detection. Audit coverage is therefore incomplete and the M4 audit milestone remains open.
 

@@ -8,6 +8,7 @@
 - Integration tests exercise OIDC discovery and verify valid tokens and rejection of invalid signatures, issuers, audiences, and token lifetimes using a simulated identity provider.
 - Entity-level role grants now control read, create, update and delete operations; access is denied by default. Configure grants under `Mtpr:Authorization:Roles` and restart after changes. Cascading deletes do not check permissions on affected entities.
 - Direct creates, updates and deletes now write before/after audit snapshots in the same SQLite transaction, with the subject when available. Cascades and direct database changes are not audited.
+- Audit entries include the subject's issuer when available; existing audit tables gain a nullable issuer column on the next successful write.
 - Field and row authorization, tenant isolation, and complete audit coverage are not yet implemented.
 
 ## M3 business rules

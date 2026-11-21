@@ -45,6 +45,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
             null, 
             record, 
             actor.Subject, 
+            actor.Issuer,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -155,6 +156,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
             old, 
             record,
             actor.Subject, 
+            actor.Issuer,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -192,15 +194,23 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
             old, 
             null, 
             actor.Subject, 
+            actor.Issuer,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
 
-    private static async Task auditAsync(SqliteConnection connection, SqliteTransaction transaction,
-        string entity, Guid id, string operation, IReadOnlyDictionary<string, object?>? before,
-        IReadOnlyDictionary<string, object?>? after, string? subject, CancellationToken cancellationToken)
+    private static async Task auditAsync(SqliteConnection connection, 
+        SqliteTransaction transaction,
+        string entity, 
+        Guid id,
+        string operation, 
+        IReadOnlyDictionary<string, object?>? before,
+        IReadOnlyDictionary<string, object?>? after,
+        string? subject,
+        string? issuer, 
+        CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -212,14 +222,38 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
                 , "record_id" TEXT NOT NULL
                 ,"operation" TEXT NOT NULL
                 , "subject" TEXT
+                , "subject_issuer" TEXT
                 , "before_json" TEXT
                 , "after_json" TEXT
             );
+            """;
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+
+        command.CommandText = "PRAGMA table_info(\"__mtpr_audit\")";
+        var hasIssuer = false;
+
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+                if (reader.GetString(1)
+                    .Equals("subject_issuer", StringComparison.OrdinalIgnoreCase))
+                    hasIssuer = true;
+        }
+
+        if (!hasIssuer)
+        {
+            command.CommandText = "ALTER TABLE \"__mtpr_audit\" ADD COLUMN \"subject_issuer\" TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        command.CommandText = """
             INSERT INTO "__mtpr_audit" ("occurred_at"
                 , "entity"
                 , "record_id"
                 , "operation"
                 , "subject"
+                , "subject_issuer"
                 , "before_json"
                 , "after_json")
             VALUES ($time
@@ -227,6 +261,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
                 , $id
                 , $operation
                 , $subject
+                , $issuer
                 , $before
                 , $after);
             """;
@@ -235,6 +270,7 @@ public class SqliteRecordStore(ISqliteConnectionFactory connectionFactory, IAudi
         command.Parameters.AddWithValue("$id", id.ToString());
         command.Parameters.AddWithValue("$operation", operation);
         command.Parameters.AddWithValue("$subject", (object?)subject ?? DBNull.Value);
+        command.Parameters.AddWithValue("$issuer", (object?)issuer ?? DBNull.Value);
         command.Parameters.AddWithValue("$before", before is null 
             ? DBNull.Value 
             : JsonSerializer.Serialize(before));

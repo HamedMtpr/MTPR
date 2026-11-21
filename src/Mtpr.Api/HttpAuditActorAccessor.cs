@@ -11,4 +11,10 @@ public sealed class HttpAuditActorAccessor(IHttpContextAccessor context)
             ?.User
             .FindFirst(ClaimTypes.NameIdentifier)
             ?.Value;
+
+    public string? Issuer =>
+        context.HttpContext
+            ?.User
+            .FindFirst("iss")
+            ?.Value;
 }

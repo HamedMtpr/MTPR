@@ -4,4 +4,6 @@ namespace Mtpr.Engine.Persistence.AuditActorAccessors;
 public interface IAuditActorAccessor
 {
     string? Subject { get; }
+
+    string? Issuer => null;
 }

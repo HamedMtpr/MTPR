@@ -33,6 +33,8 @@ The service account needs read access to definitions and read/write access to th
 
 The first successful direct write creates the audit table in the same SQLite database. It stores full before and after snapshots, which may contain sensitive data. Protect the database and its backups accordingly; the database owner can alter the audit records, and no external or tamper-evident audit sink is provided. A failure to write the audit entry rolls back the associated data change.
 
+Existing audit tables are upgraded with a nullable `subject_issuer` column during the next successful direct write. Back up the database and matching definitions before deployment. Existing rows retain a null issuer; new rows record the validated token's issuer when its claim is present. Ensure the service can alter the SQLite schema as well as write the database.
+
 ## Verify
 
 Use the manual checks in the M4 build guide with an appropriate token. Verify both an allowed request and a request with a valid token lacking the grant, as well as an unauthenticated request. A running process alone does not establish that discovery, authorization, definitions and database access work. Use a disposable database when testing writes. Stop the process before replacing its database or restoring backups.
