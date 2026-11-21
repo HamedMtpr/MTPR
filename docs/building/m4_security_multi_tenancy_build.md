@@ -41,7 +41,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/order' -Headers $headers
 
 A valid token with the `reader` role receives the order list, initially empty with a fresh database. A missing or invalid token receives HTTP 401. A valid token without a matching role receives HTTP 403. The reader grant does not allow writes. The role name and operation grant must match the actual token and requested endpoint.
 
-To restrict input fields for a role that has an entity create or update grant, set for example `Mtpr__Authorization__FieldWrites__order__editor__0` to `title` before starting the API. On configured entities, POST and PATCH reject other supplied fields; PUT requires the role's `*` field grant. A missing field policy leaves the entity's existing write access unchanged. The operations guide describes the configuration and its limitations.
+To restrict input fields for a role that has an entity create or update grant, set for example `Mtpr__Authorization__FieldWrites__order__editor__0` to `title` before starting the API. On configured entities, POST and PATCH reject other supplied fields; PUT requires the role's `*` field grant. A missing field policy leaves the entity's existing write access unchanged. To hide fields on reads, set for example `Mtpr__Authorization__FieldReads__order__editor__0` to `title`; responses then contain only `id` and `title` and list queries naming other fields return 403. The operations guide describes the configuration and its limitations.
 
 To run all automated checks from the repository root:
 

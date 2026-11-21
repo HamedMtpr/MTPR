@@ -8,6 +8,7 @@
 - [Authentication tests](../../tests/Mtpr.IntegrationTests/Security/AuthenticationTests.cs)
 - [JWT validation tests](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests.cs)
 - [Entity authorization tests](../../tests/Mtpr.IntegrationTests/Security/EntityAuthorizationTests.cs)
+- [Field read tests](../../tests/Mtpr.IntegrationTests/Security/FieldReads/FieldReadTests.cs)
 - [Field write tests](../../tests/Mtpr.IntegrationTests/Security/FieldWrites/FieldWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
@@ -23,7 +24,7 @@ dotnet test MTPR.slnx --no-restore
 dotnet test tests/Mtpr.IntegrationTests/Mtpr.IntegrationTests.csproj --no-restore --filter 'FullyQualifiedName~Security'
 ```
 
-JWT tests use simulated OIDC discovery and check valid tokens and invalid issuer, audience, signature and lifetime. Authorization tests exercise role, entity and operation grants and default denial. Field write tests check rejected fields on POST and PATCH, non-object bodies, the PUT `*` requirement, wildcard grants and grants for other roles. Audit tests check create, update and delete snapshots, subject and UTC timestamp, and confirm that rule rejection and an audit insertion failure leave the data and audit unchanged. They also check subject and issuer from a validated JWT, upgrade of a legacy audit table, and rollback of the upgrade when insertion fails. Tests use isolated SQLite databases and do not require an external identity provider.
+JWT tests use simulated OIDC discovery and check valid tokens and invalid issuer, audience, signature and lifetime. Authorization tests exercise role, entity and operation grants and default denial. Field write tests check rejected fields on POST and PATCH, non-object bodies, the PUT `*` requirement, wildcard grants and grants for other roles. Field read tests check removal of ungranted fields from create, get, list and patch responses, rejected `fields`, `sort` and `filter` on hidden fields, the always-readable `id`, wildcard grants and grants for other roles. Audit tests check create, update and delete snapshots, subject and UTC timestamp, and confirm that rule rejection and an audit insertion failure leave the data and audit unchanged. They also check subject and issuer from a validated JWT, upgrade of a legacy audit table, and rollback of the upgrade when insertion fails. Tests use isolated SQLite databases and do not require an external identity provider.
 
 The tests do not establish interoperability with a particular identity provider or verify tenant isolation. Cascades, direct database changes and failed or denied requests are outside the current audit coverage.
 

@@ -65,6 +65,7 @@ app.UseAuthorization();
 
 EntityPermissions entityPermissions = new(app.Configuration);
 FieldWritePermissions fieldWritePermissions = new(app.Configuration);
+FieldReadPermissions fieldReadPermissions = new(app.Configuration);
 
 var api = app.MapGroup("/api/{entity}")
     .RequireAuthorization();
@@ -103,7 +104,19 @@ api.AddEndpointFilter(async (context, next) =>
             return Results.Forbid();
     }
 
-    return await next(context);
+    if (method == "GET" &&
+        !fieldReadPermissions.AllowsQuery(context.HttpContext.User,
+            entity,
+            context.HttpContext.Request.Query))
+        return Results.Forbid();
+
+    var result = await next(context);
+
+    return result is IResult response
+        ? fieldReadPermissions.Filter(context.HttpContext.User,
+            entity,
+            response)
+        : result;
 });
 
 api.MapPost("/",

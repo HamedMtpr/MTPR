@@ -10,6 +10,9 @@
 - [JWT validation tests](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests.cs)
 - [Entity authorization tests](../../tests/Mtpr.IntegrationTests/Security/EntityAuthorizationTests.cs)
 - [Field write permissions](../../src/Mtpr.Api/Authorization/FieldWritePermissions.cs)
+- [Field grants](../../src/Mtpr.Api/Authorization/FieldGrants.cs)
+- [Field read permissions](../../src/Mtpr.Api/Authorization/FieldReadPermissions.cs)
+- [Field read tests](../../tests/Mtpr.IntegrationTests/Security/FieldReads/FieldReadTests.cs)
 - [Field write tests](../../tests/Mtpr.IntegrationTests/Security/FieldWrites/FieldWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
@@ -31,6 +34,8 @@ These checks protect the HTTP endpoint group; direct calls to the engine or data
 ## Field write grants
 
 `Mtpr:Authorization:FieldWrites` optionally lists allowed input fields by entity and role. A configured entity denies writes from roles without a field grant. Matching role grants are combined, field and entity names are case-insensitive, and `*` in a role's field list grants all input fields for that entity. An entity with no field policy retains the existing entity-level behavior. The policy is loaded at startup and changes require restart. A wildcard entity is not supported.
+
+`Mtpr:Authorization:FieldReads` uses the same shape (`FieldGrants` parses both) to list readable output fields by entity and role. For a configured entity the endpoint filter in `Program.cs` first rejects with HTTP 403 any list request whose `fields`, `sort` or `filter` names a field that is not granted, because ordering or filtering by a hidden field would reveal its values. `id` is always readable. After the handler runs, `FieldReadPermissions.Filter` projects the record or records of GET, POST, PUT and PATCH responses to granted fields. A restricted entity returning an unexpected value result throws instead of leaking it. Roles without a grant on a configured entity cannot read it. Entities without a policy are unchanged.
 
 The endpoint filter first requires the entity operation grant. On POST and PATCH, every property in an object body must be in the caller's field grants; otherwise the request returns HTTP 403. On PUT the caller must have the `*` field grant, because omitted fields can also be modified. A body that is not a JSON object (for example an array or a missing body) is rejected with HTTP 403 on configured entities. The normal engine validation continues to reject unknown, duplicate and computed input fields.
 
