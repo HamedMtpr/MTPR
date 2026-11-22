@@ -6,11 +6,13 @@ public interface IEntityService
 {
     Task<IReadOnlyDictionary<string, object?>> CreateAsync(string entity,
         IReadOnlyDictionary<string, JsonElement> input,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null);
 
     Task<IReadOnlyDictionary<string, object?>> GetAsync(string entity,
         Guid id,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null);
 
     Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> ListAsync(string entity,
         RecordQuery query,
@@ -20,9 +22,11 @@ public interface IEntityService
         Guid id,
         IReadOnlyDictionary<string, JsonElement> input,
         bool partial,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null);
 
     Task DeleteAsync(string entity,
         Guid id,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null);
 }

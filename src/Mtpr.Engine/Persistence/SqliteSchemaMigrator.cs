@@ -6,6 +6,7 @@ using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Definitions.Fields;
 using Mtpr.Engine.Errors;
+using Mtpr.Engine.Persistence.Audit;
 
 namespace Mtpr.Engine.Persistence;
 
@@ -24,8 +25,21 @@ public class SqliteSchemaMigrator(ISqliteConnectionFactory connectionFactory) : 
             $"CREATE TABLE IF NOT EXISTS {logTable} (name TEXT PRIMARY KEY, hash TEXT NOT NULL, applied_at TEXT NOT NULL)",
             cancellationToken);
 
+        await AuditTable.EnsureAsync(connection, 
+            transaction, 
+            cancellationToken);
+
         foreach (var definition in definitions)
-            await applyAsync(connection, transaction, definition, cancellationToken);
+        {
+            await applyAsync(connection,
+                transaction, 
+                definition, 
+                cancellationToken);
+
+            await connection.InstallAsync(transaction,
+                definition,
+                cancellationToken);
+        }
 
         await transaction.CommitAsync(cancellationToken);
     }

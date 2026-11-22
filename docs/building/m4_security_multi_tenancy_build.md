@@ -1,0 +1,64 @@
+# M4 security and multi-tenancy: build and run
+
+- [Back to index](index.md)
+- [M4 implementation](../coding/m4_security_multi_tenancy_implementation.md)
+- [M4 deployment](../deployment/m4_security_multi_tenancy_deployment.md)
+- [M4 operations](../operations/m4_security_multi_tenancy_operations.md)
+- [M4 testing](../testing/m4_security_multi_tenancy_testing.md)
+- [Sample order definition](../examples/m3-order/order.json)
+- [SDK version](../../global.json)
+
+M4 implements JWT authentication, entity and field grants, row filters, tenant isolation for the supported single-process API deployment, and transactional audit records for managed SQLite tables. Audit coverage has the deployment boundaries described in the implementation and operations guides; run the prototype in a trusted environment.
+
+## Configure and run
+
+The commands below use PowerShell from the repository root and the SDK selected by `global.json`. They require an existing OIDC identity provider reachable over HTTPS and an access token issued for the API audience with a `reader` role recognized by the JWT bearer handler. Configure the actual issuer and audience; the example values are placeholders and do not provide an identity service.
+
+```powershell
+dotnet restore MTPR.slnx
+dotnet build MTPR.slnx --no-restore
+New-Item -ItemType Directory -Force ./artifacts/m4-demo/definitions | Out-Null
+Copy-Item docs/examples/m3-order/order.json ./artifacts/m4-demo/definitions/order.json
+$env:Mtpr__DefinitionsPath = (Resolve-Path ./artifacts/m4-demo/definitions).Path
+$env:Mtpr__ConnectionString = "Data Source=$((Resolve-Path ./artifacts/m4-demo).Path)/mtpr.db"
+$env:Mtpr__Authentication__Authority = 'https://your-issuer.example'
+$env:Mtpr__Authentication__Audience = 'your-api-audience'
+$env:Mtpr__Authorization__Roles__reader__order__0 = 'read'
+$env:ASPNETCORE_URLS = 'http://127.0.0.1:5080'
+dotnet run --project src/Mtpr.Api --no-launch-profile
+```
+
+The service fails to start if authority or audience is missing or the authority is not an absolute HTTPS URL. The sample is bound to loopback HTTP for local use; use TLS for access across a network. Use a fresh data directory when repeating the setup; creating an existing directory does not clear its database.
+
+## Verify access
+
+Keep the API running. In a second PowerShell window, obtain a suitable token through your identity provider's approved flow and place it in the `MTPR_ACCESS_TOKEN` environment variable without committing or sharing it. Then run:
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:MTPR_ACCESS_TOKEN" }
+Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/order' -Headers $headers
+```
+
+A valid token with the `reader` role receives the order list, initially empty with a fresh database. A missing or invalid token receives HTTP 401. A valid token without a matching role receives HTTP 403. The reader grant does not allow writes. The role name and operation grant must match the actual token and requested endpoint.
+
+To restrict input fields for a role that has an entity create or update grant, set for example `Mtpr__Authorization__FieldWrites__order__editor__0` to `title` before starting the API. On configured entities, POST and PATCH reject other supplied fields; PUT requires the role's `*` field grant. A missing field policy leaves the entity's existing write access unchanged. To hide fields on reads, set for example `Mtpr__Authorization__FieldReads__order__editor__0` to `title`; responses then contain only `id` and `title` and list queries naming other fields return 403. The operations guide describes the configuration and its limitations.
+
+Write grants must also cover non-null default, lifecycle, computed and tenant values created by the server, and computed fields changed by an update. Cascaded deletes require delete grants on affected entities; set-null requires update and field grants on affected entities. A denied indirect change rolls back the complete operation.
+
+To run all automated checks from the repository root:
+
+```powershell
+dotnet test MTPR.slnx --no-restore
+```
+
+The JWT integration tests simulate the identity provider; they do not require the external provider configured for the manual check.
+
+The `__mtpr_audit` table and managed-table triggers are created when definitions are loaded, including by the read-only sample above. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.
+
+API writes record the authenticated subject and issuer when those claims are available. An older audit table is upgraded during definition migration; older rows retain a null issuer. API cascades include `caused_by` and denied requests are recorded. Independent SQL writes after migration are also recorded, without an authenticated actor or cascade cause. Conflicting replacement operations are rejected to prevent unlogged deletes.
+
+Optional tenant isolation: set `Mtpr:Tenancy:Entities:note` to the tenant field name (claim `tenant_id` by default, see `Mtpr:Tenancy:ClaimType`). Optional row filters: set `Mtpr:Authorization:RowFilters:note:editor:0` to `tenant:eq:{claim:tenant}`. See the M4 implementation document for semantics.
+
+The tenant field must be an ordinary string field and each unique group must include it. Configure every entity in a connected tenant reference graph; writes are denied when the graph includes an unscoped entity. References and cascading changes are checked against the caller's tenant. Unlisted entities are not tenant-scoped.
+
+The row filter is also checked for direct creates and for the final state of updates. A write outside the configured scope returns HTTP 404 and is rolled back. A missing entity policy leaves its rows unrestricted by this feature.

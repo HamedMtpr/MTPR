@@ -25,27 +25,19 @@ internal static class SqliteQueryBuilder
         }
 
         var where = new List<string>();
+        var parameters = 0;
+
         foreach (var filter in query.Filters)
-        {
-            var parts = filter.Split(':', 3);
-            if (parts.Length != 3) throw invalid("filter must be field:operator:value");
-            var (name, type) = resolve(definition, parts[0]);
-            var column = expression(name, type);
-            var op = parts[1].ToLowerInvariant();
-            if (op is "isnull" or "notnull")
-            {
-                if (parts[2].Length != 0) throw invalid("null filters have no value");
-                where.Add($"{column} IS {(op == "notnull" ? "NOT " : "")}NULL");
-                continue;
-            }
-            if (op == "contains" && type != FieldType.String) throw invalid("contains requires a string field");
-            var sqlOp = op switch { "eq" => "=", "ne" => "<>", "gt" => ">", "ge" => ">=", "lt" => "<", "le" => "<=", "contains" => "contains", _ => throw invalid("unknown filter operator") };
-            var parameter = "$filter" + where.Count;
-            var value = parse(type, parts[2]);
-            command.Parameters.AddWithValue(parameter, SqliteTypeMap.ToDb(value));
-            var operand = parameter;
-            where.Add(sqlOp == "contains" ? $"instr({column}, {operand}) > 0" : $"{column} {sqlOp} {operand}");
-        }
+            where.Add(condition(command,
+                definition, 
+                filter, 
+                ref parameters));
+
+        if (query.Scope is not null)
+            where.Add(scope(command,
+                definition,
+                query.Scope, 
+                ref parameters));
 
         var order = new List<string>();
         if (query.Sort is not null)
@@ -60,6 +52,80 @@ internal static class SqliteQueryBuilder
             (where.Count == 0 ? "" : " WHERE " + string.Join(" AND ", where)) +
             " ORDER BY " + string.Join(", ", order) + " LIMIT $take OFFSET $skip";
         return selected;
+    }
+
+    /// <summary>Row scope: groups are OR-ed, filters inside a group are AND-ed; no group matches nothing.</summary>
+    private static string scope(SqliteCommand command,
+        EntityDefinition definition,
+        IReadOnlyList<IReadOnlyList<string>> groups,
+        ref int parameters)
+    {
+        if (groups.Count == 0)
+            return "0 = 1";
+
+        var parts = new List<string>();
+
+        foreach (var group in groups)
+        {
+            var conditions = new List<string>();
+
+            foreach (var filter in group)
+                conditions.Add(condition(command, 
+                    definition, 
+                    filter,
+                    ref parameters));
+
+            parts.Add(conditions.Count == 0
+                ? "0 = 1"
+                : "(" + string.Join(" AND ", conditions) + ")");
+        }
+
+        return "(" + string.Join(" OR ", parts) + ")";
+    }
+
+    private static string condition(SqliteCommand command,
+        EntityDefinition definition,
+        string filter,
+        ref int parameters)
+    {
+        var parts = filter.Split(':', 3);
+        if (parts.Length != 3) 
+            throw invalid("filter must be field:operator:value");
+
+        var (name, type) = resolve(definition, parts[0]);
+        var column = expression(name, type);
+        var op = parts[1].ToLowerInvariant();
+
+        if (op is "isnull" or "notnull")
+        {
+            if (parts[2].Length != 0) 
+                throw invalid("null filters have no value");
+
+            return $"{column} IS {(op == "notnull" ? "NOT " : "")}NULL";
+        }
+
+        if (op == "contains" && type != FieldType.String)
+            throw invalid("contains requires a string field");
+
+        var sqlOp = op switch
+        {
+            "eq" => "=",
+            "ne" => "<>",
+            "gt" => ">",
+            "ge" => ">=",
+            "lt" => "<",
+            "le" => "<=",
+            "contains" => "contains",
+            _ => throw invalid("unknown filter operator")
+        };
+
+        var parameter = "$filter" + parameters++;
+        command.Parameters.AddWithValue(parameter, 
+            SqliteTypeMap.ToDb(parse(type, parts[2])));
+
+        return sqlOp == "contains"
+            ? $"instr({column}, {parameter}) > 0"
+            : $"{column} {sqlOp} {parameter}";
     }
 
     private static (string, FieldType) resolve(EntityDefinition definition, string name)

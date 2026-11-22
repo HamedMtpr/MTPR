@@ -14,7 +14,8 @@ public class EntityService(IDefinitionCatalog catalog,
 {
     public async Task<IReadOnlyDictionary<string, object?>> CreateAsync(string entity,
         IReadOnlyDictionary<string, JsonElement> input,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
         var withDefaults = new Dictionary<string, JsonElement>(input);
@@ -50,16 +51,21 @@ public class EntityService(IDefinitionCatalog catalog,
             values,
             (trigger, record, previous) =>
                 runRules(definition, trigger, record, previous),
-                cancellationToken);
+                cancellationToken,
+                scope);
     }
 
     public async Task<IReadOnlyDictionary<string, object?>> GetAsync(string entity,
         Guid id,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
 
-        return await store.FindAsync(definition, id, cancellationToken)
+        return await store.FindAsync(definition, 
+                   id, 
+                   cancellationToken,
+                   scope)
                ?? throw notFound(definition, id);
     }
 
@@ -82,10 +88,13 @@ public class EntityService(IDefinitionCatalog catalog,
         Guid id,
         IReadOnlyDictionary<string, JsonElement> input,
         bool partial,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null)
     {
-        var definition = await catalog.GetAsync(entity, cancellationToken);
-        var values = validator.Validate(definition, input, partial);
+        var definition = await catalog.GetAsync(entity, 
+                cancellationToken);
+        var values =
+            validator.Validate(definition, input, partial);
 
         return await store.UpdateAsync(definition,
                    id,
@@ -95,16 +104,22 @@ public class EntityService(IDefinitionCatalog catalog,
                     record),
             (trigger, record, previous) =>
                 runRules(definition, trigger, record, previous),
-                cancellationToken)
+                cancellationToken,
+                scope)
             ?? throw notFound(definition, id);
     }
-    public async Task DeleteAsync(string entity, Guid id, CancellationToken cancellationToken)
+
+    public async Task DeleteAsync(string entity,
+        Guid id, 
+         CancellationToken cancellationToken,
+        IReadOnlyList<IReadOnlyList<string>>? scope = null)
     {
         var definition = await catalog.GetAsync(entity, cancellationToken);
 
         if (!await store.DeleteAsync(definition, id,
             (trigger, record, previous) => runRules(definition, trigger, record, previous),
-                cancellationToken))
+                cancellationToken,
+                scope))
             throw notFound(definition, id);
     }
 

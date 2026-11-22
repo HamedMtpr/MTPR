@@ -2,6 +2,15 @@
 
 [Back to index](index.md)
 
+## M4 Security and Multi-Tenancy (in progress)
+
+- CRUD endpoints require a JWT bearer token. Configure `Mtpr:Authentication:Authority` (HTTPS) and `Mtpr:Authentication:Audience` before starting the API. Existing unauthenticated clients must obtain and send a token.
+- Integration tests exercise OIDC discovery and verify valid tokens and rejection of invalid signatures, issuers, audiences, and token lifetimes using a simulated identity provider.
+- Entity-level role grants now control read, create, update and delete operations; access is denied by default. Configure grants under `Mtpr:Authorization:Roles` and restart after changes. Cascading deletes do not check permissions on affected entities.
+- Direct creates, updates and deletes now write before/after audit snapshots in the same SQLite transaction, with the subject when available. Cascades and direct database changes are not audited.
+- Audit entries include the subject's issuer when available; existing audit tables gain a nullable issuer column on the next successful write.
+- Added tenant scoping and transactional same-tenant reference and cascade checks. Reference graphs mixing scoped and unscoped entities reject writes. The supported isolation deployment uses one API process per database; complete audit coverage remains open.
+
 ## M3 business rules
 
 - Added read-only computed decimal fields with bounded arithmetic expressions. Computed results are persisted on create and update; changing a definition does not backfill existing rows.

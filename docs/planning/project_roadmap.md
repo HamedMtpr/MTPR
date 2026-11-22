@@ -84,11 +84,11 @@ Local test results are the current milestone verification in the absence of CI. 
 
 ### M4 - Security and Multi-Tenancy (Weeks 10-11)
 
-- [ ] Authentication integration (OIDC/JWT).
-- [ ] Role-based access control at entity and field level.
-- [ ] Row-level filters.
-- [ ] Tenant isolation strategy.
-- [ ] Audit log of all changes.
+- [x] Authentication integration (OIDC/JWT).
+- [x] Role-based access control at entity and field level for the HTTP API, including indirect writes and relation effects.
+- [x] Row-level filters.
+- [x] Tenant isolation strategy for the supported single-process API deployment, including scoped references and cascading changes.
+- [x] Audit log of all changes. (Transactional audit log of committed record changes on managed SQLite tables, including direct SQL and cascade changes, within the documented deployment boundary.)
 
 **Exit criteria:** Security tests prove that unauthorized access and cross-tenant access are rejected.
 
