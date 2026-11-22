@@ -12,7 +12,7 @@
 - [Field write tests](../../tests/Mtpr.IntegrationTests/Security/FieldWrites/FieldWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
-- [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Cascade.cs)
+- [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/Cascades/AuditTests_Cascade.cs)
 - [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
 
 ## Automated checks
@@ -32,3 +32,7 @@ The tests do not establish interoperability with a particular identity provider 
 ## Manual checks
 
 Use the M4 build guide to run the API and check valid, invalid and insufficiently privileged tokens. For audit inspection, use a disposable database and an appropriate write grant; perform a create, update and delete, then inspect `__mtpr_audit` with a trusted SQLite client. Confirm the operation, record ID, optional subject and issuer, and before/after snapshots. The sample build grants only read access, so it must be extended before testing writes. Snapshots contain data from the test records; do not use sensitive production records.
+
+Row filter tests (`Security/RowFilters`) cover scoped lists, caller filters that cannot widen the scope, missing claims, 404 for out-of-scope access and rollback of an update that would leave the scope.
+
+`RowFilterReloadTests` change configuration and explicitly signal reload while the host is running. They check that a new row filter applies without a restart and that an invalid reload keeps the previous policy. Assigning a configuration value alone does not signal reload.

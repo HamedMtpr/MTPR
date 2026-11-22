@@ -1,4 +1,5 @@
 using Mtpr.Engine.Persistence.Audit;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mtpr.Api;
@@ -17,9 +18,9 @@ builder.Services
         JwtBearerDefaults.AuthenticationScheme)
     .Configure<IConfiguration>((options, configuration) =>
     {
-        options.Authority = 
+        options.Authority =
             configuration["Mtpr:Authentication:Authority"];
-        options.Audience = 
+        options.Audience =
             configuration["Mtpr:Authentication:Audience"];
         options.RequireHttpsMetadata = true;
     });
@@ -44,9 +45,9 @@ builder.Services.AddMtprEngine(
 
 var app = builder.Build();
 
-var authority = 
+var authority =
     app.Configuration["Mtpr:Authentication:Authority"];
-var audience = 
+var audience =
     app.Configuration["Mtpr:Authentication:Audience"];
 
 if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri)
@@ -64,16 +65,37 @@ app.UseMiddleware<MtprExceptionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-EntityPermissions entityPermissions = new(app.Configuration);
-FieldWritePermissions fieldWritePermissions = new(app.Configuration);
-FieldReadPermissions fieldReadPermissions = new(app.Configuration);
+var policyLogger = app.Logger;
+
+ReloadablePolicy<EntityPermissions> entityPermissions = new(app.Configuration,
+    configuration => new EntityPermissions(configuration),
+    policyLogger,
+    "entity");
+
+ReloadablePolicy<FieldWritePermissions> fieldWritePermissions = 
+    new(app.Configuration,
+        configuration => new FieldWritePermissions(configuration),
+        policyLogger,
+        "field write");
+
+ReloadablePolicy<FieldReadPermissions> fieldReadPermissions = 
+    new(app.Configuration,
+        configuration => new FieldReadPermissions(configuration),
+        policyLogger,
+        "field read");
+
+ReloadablePolicy<RowFilterPermissions> rowFilterPermissions =
+    new(app.Configuration,
+        configuration => new RowFilterPermissions(configuration),
+        policyLogger,
+        "row filter");
 
 var api = app.MapGroup("/api/{entity}")
     .RequireAuthorization();
 
 api.AddEndpointFilter(async (context, next) =>
 {
-    var entity = 
+    var entity =
         context.HttpContext
             .Request
             .RouteValues["entity"]?.ToString() ?? string.Empty;
@@ -87,34 +109,46 @@ api.AddEndpointFilter(async (context, next) =>
         _ => string.Empty
     };
 
-    if (!entityPermissions.Allows(context.HttpContext.User,
+    if (!entityPermissions.Current.Allows(context.HttpContext.User,
             entity,
             action))
-        return await denyAsync(context, entity, $"entity:{action}");
+        return
+            await denyAsync(context,
+                entity,
+                $"entity:{action}");
 
     var method = context.HttpContext.Request.Method;
 
     if (method is "POST" or "PUT" or "PATCH")
     {
-        var body = context.Arguments.OfType<JsonElement>().FirstOrDefault();
+        var body = context.Arguments
+            .OfType<JsonElement>()
+            .FirstOrDefault();
 
-        if (!fieldWritePermissions.Allows(context.HttpContext.User,
-                entity,
-                method,
+        if (!fieldWritePermissions.Current
+                .Allows(context.HttpContext.User,
+                    entity,
+                    method,
                 body))
-            return await denyAsync(context, entity, $"field-write:{method}");
+            return 
+                await denyAsync(context,
+                    entity, 
+                    $"field-write:{method}");
     }
 
     if (method == "GET" &&
-        !fieldReadPermissions.AllowsQuery(context.HttpContext.User,
+        !fieldReadPermissions.Current
+            .AllowsQuery(context.HttpContext.User,
+                entity,
+                context.HttpContext.Request.Query))
+        return await denyAsync(context,
             entity,
-            context.HttpContext.Request.Query))
-        return await denyAsync(context, entity, "field-read:query");
+            "field-read:query");
 
     var result = await next(context);
 
     return result is IResult response
-        ? fieldReadPermissions.Filter(context.HttpContext.User,
+        ? fieldReadPermissions.Current.Filter(context.HttpContext.User,
             entity,
             response)
         : result;
@@ -123,11 +157,15 @@ api.AddEndpointFilter(async (context, next) =>
 api.MapPost("/",
     async (string entity,
         JsonElement body,
+        ClaimsPrincipal user,
         IEntityService service,
         CancellationToken ct) =>
 {
     var created =
-        await service.CreateAsync(entity, BodyReader.ToInput(body), ct);
+        await service.CreateAsync(entity, 
+            BodyReader.ToInput(body),
+            ct,
+            rowFilterPermissions.Current.ScopeOf(user, entity));
 
     return Results.Created($"/api/{entity}/{created["id"]}", created);
 });
@@ -139,54 +177,70 @@ api.MapGet("/",
             string? sort,
             string? fields,
             HttpRequest request,
+            ClaimsPrincipal user,
             IEntityService service,
             CancellationToken ct)
     => Results.Ok(await service.ListAsync(entity,
-        new RecordQuery(skip ?? 0, 
+        new RecordQuery(skip ?? 0,
             take ?? 50,
             sort,
             fields,
             request.Query["filter"]
                 .Select(v => v ?? string.Empty)
-                .ToArray()),
+                .ToArray(),
+            rowFilterPermissions.Current.ScopeOf(user, entity)),
         ct)));
 
 api.MapGet("/{id:guid}",
     async (string entity,
             Guid id,
+            ClaimsPrincipal user,
             IEntityService service,
-            CancellationToken ct)
-    => Results.Ok(await service.GetAsync(entity, id, ct)));
+            CancellationToken ct) => 
+        Results.Ok((object?)await service.GetAsync(entity, 
+            id,
+            ct, 
+            rowFilterPermissions.Current.ScopeOf(user, entity))));
 
 api.MapPut("/{id:guid}",
     async (string entity,
             Guid id,
             JsonElement body,
+            ClaimsPrincipal user,
             IEntityService service,
-            CancellationToken ct)
-    => Results.Ok(await service.UpdateAsync(entity,
-        id, BodyReader.ToInput(body),
-        false, ct)));
+            CancellationToken ct) => 
+        Results.Ok((object?)await service.UpdateAsync(entity,
+            id,
+            BodyReader.ToInput(body),
+            false,
+            ct,
+            rowFilterPermissions.Current.ScopeOf(user, entity))));
 
 api.MapPatch("/{id:guid}",
     async (string entity,
             Guid id,
             JsonElement body,
+            ClaimsPrincipal user,
             IEntityService service,
-            CancellationToken ct)
-    => Results.Ok(await service.UpdateAsync(entity,
-        id,
-        BodyReader.ToInput(body),
-        true,
-        ct)));
+            CancellationToken ct) =>
+        Results.Ok((object?)await service.UpdateAsync(entity,
+            id,
+            BodyReader.ToInput(body),
+            true,
+            ct,
+            rowFilterPermissions.Current.ScopeOf(user, entity))));
 
 api.MapDelete("/{id:guid}",
     async (string entity,
         Guid id,
+        ClaimsPrincipal user,
         IEntityService service,
         CancellationToken ct) =>
 {
-    await service.DeleteAsync(entity, id, ct);
+    await service.DeleteAsync(entity, 
+        id, 
+        ct,
+        rowFilterPermissions.Current.ScopeOf(user, entity));
 
     return Results.NoContent();
 });

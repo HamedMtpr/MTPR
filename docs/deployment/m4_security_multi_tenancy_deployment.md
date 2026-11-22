@@ -42,3 +42,9 @@ Existing audit tables are upgraded with a nullable `subject_issuer` column durin
 ## Verify
 
 Use the manual checks in the M4 build guide with an appropriate token. Verify both an allowed request and a request with a valid token lacking the grant, as well as an unauthenticated request. A running process alone does not establish that discovery, authorization, definitions and database access work. Use a disposable database when testing writes. Stop the process before replacing its database or restoring backups.
+
+Review `Mtpr:Authorization:RowFilters` and make sure the identity provider issues the claims they reference; a missing claim hides all rows.
+
+Configure a policy for every entity that requires row restrictions. Removing a policy restores unfiltered access for that entity. Test creates and updates as well as reads; out-of-scope resulting records are rejected and rolled back. These filters do not provide complete tenant isolation or restrict cascades and direct database access.
+
+Edit authorization settings in a reloadable source such as `appsettings.json`; they apply without restarting. Settings from environment variables or arguments, and JWT settings, still need a restart. After an edit, check the log for a reload message or an "Invalid ... policy ignored" error.

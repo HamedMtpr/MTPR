@@ -18,12 +18,12 @@
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
 - [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
 - [SQLite record store](../../src/Mtpr.Engine/Persistence/SqliteRecordStore.cs)
-- [Cascade planning](../../src/Mtpr.Engine/Persistence/SqliteRecordStore.Cascade.cs)
+- [Cascade planning](../../src/Mtpr.Engine/Persistence/SqliteRecordStore_Cascade.cs)
 - [Audit table](../../src/Mtpr.Engine/Persistence/Audit/AuditTable.cs)
 - [Audit entry](../../src/Mtpr.Engine/Persistence/Audit/AuditEntry.cs)
 - [Audit trail for denials](../../src/Mtpr.Engine/Persistence/Audit/AuditTrail.cs)
 - [Audit actor accessor](../../src/Mtpr.Api/HttpAuditActorAccessor.cs)
-- [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Cascade.cs)
+- [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/Cascades/AuditTests_Cascade.cs)
 
 ## Authentication
 
@@ -31,7 +31,7 @@ The API registers ASP.NET Core JWT bearer authentication and requires an authent
 
 ## Entity authorization
 
-`EntityPermissions` reads `Mtpr:Authorization:Roles` once at startup. Each role contains entity names mapped to arrays of operations. Roles are evaluated with `ClaimsPrincipal.IsInRole`; the identity provider must issue a role claim that the bearer handler maps to the principal's role claim type. Role values use the principal's case-sensitive role matching. Entity names are compared case-insensitively, and `*` matches every entity. Operations are case-sensitive and must be `read`, `create`, `update`, or `delete`; an invalid operation in an entity's array prevents startup.
+`EntityPermissions` reads `Mtpr:Authorization:Roles` (reloaded at runtime, see "Runtime reload of policies"). Each role contains entity names mapped to arrays of operations. Roles are evaluated with `ClaimsPrincipal.IsInRole`; the identity provider must issue a role claim that the bearer handler maps to the principal's role claim type. Role values use the principal's case-sensitive role matching. Entity names are compared case-insensitively, and `*` matches every entity. Operations are case-sensitive and must be `read`, `create`, `update`, or `delete`; an invalid operation in an entity's array prevents startup.
 
 The endpoint filter maps list and single-record GET to `read`, POST to `create`, PUT and PATCH to `update`, and DELETE to `delete`. Any matching grant from any role allows the operation. Without a matching grant the filter returns HTTP 403 before the entity service runs. Permissions do not implicitly grant other operations. Restart the API after changing grants; definition files follow their separate reload behavior.
 
@@ -39,7 +39,7 @@ These checks protect the HTTP endpoint group; direct calls to the engine or data
 
 ## Field write grants
 
-`Mtpr:Authorization:FieldWrites` optionally lists allowed input fields by entity and role. A configured entity denies writes from roles without a field grant. Matching role grants are combined, field and entity names are case-insensitive, and `*` in a role's field list grants all input fields for that entity. An entity with no field policy retains the existing entity-level behavior. The policy is loaded at startup and changes require restart. A wildcard entity is not supported.
+`Mtpr:Authorization:FieldWrites` optionally lists allowed input fields by entity and role. A configured entity denies writes from roles without a field grant. Matching role grants are combined, field and entity names are case-insensitive, and `*` in a role's field list grants all input fields for that entity. An entity with no field policy retains the existing entity-level behavior. The policy reloads at runtime without a restart. A wildcard entity is not supported.
 
 `Mtpr:Authorization:FieldReads` uses the same shape (`FieldGrants` parses both) to list readable output fields by entity and role. For a configured entity the endpoint filter in `Program.cs` first rejects with HTTP 403 any list request whose `fields`, `sort` or `filter` names a field that is not granted, because ordering or filtering by a hidden field would reveal its values. `id` is always readable. After the handler runs, `FieldReadPermissions.Filter` projects the record or records of GET, POST, PUT and PATCH responses to granted fields. A restricted entity returning an unexpected value result throws instead of leaking it. Roles without a grant on a configured entity cannot read it. Entities without a policy are unchanged.
 
@@ -63,10 +63,26 @@ Access denials (HTTP 403 for entity grants, field writes and field reads) are ap
 
 Every row also stores `request_id`, taken from `HttpContext.TraceIdentifier`, so rows of one request can be correlated. `AuditTable.EnsureAsync` creates the table, adds missing `subject_issuer`, `request_id`, `caused_by` and `detail` columns, and then creates the triggers `__mtpr_audit_no_update` and `__mtpr_audit_no_delete`, which abort with "The audit log is append-only." The columns are upgraded first because adding a column is not an update. The check runs on every append inside the caller's transaction.
 
-Limits: the plan is computed before the database acts, so a concurrent writer between the two steps could make it differ, although SQLite serializes writers. The triggers stop ordinary SQL but not someone who drops them or replaces the file, so the log is append-only rather than tamper-proof. Reads, deletes of missing records, authentication failures (401) and writes rolled back by rule rejections are not recorded. There is no audit query API, retention policy or external sink. Row-level filters and tenant isolation remain open in M4.
+Limits: the plan is computed before the database acts, so a concurrent writer between the two steps could make it differ, although SQLite serializes writers. The triggers stop ordinary SQL but not someone who drops them or replaces the file, so the log is append-only rather than tamper-proof. Reads, deletes of missing records, authentication failures (401) and writes rolled back by rule rejections are not recorded. There is no audit query API, retention policy or external sink. Tenant isolation remains open in M4.
 
 ## Current scope and tests
 
-Row filters and tenant isolation are not implemented. All records are accessible to a user with the applicable entity read grant, and fields are limited only where field grants are configured. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
+Tenant isolation is not implemented; row filters apply only where configured. All records are accessible to a user with the applicable entity read grant, and fields are limited only where field grants are configured. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
 
 Integration tests use isolated SQLite databases. JWT tests exercise the real bearer handler with a simulated discovery endpoint and signing keys, including valid and invalid issuer, audience, signature and lifetime cases. Entity authorization tests cover role, entity and operation grants and default denial. Test authentication is limited to the test host. These tests do not establish interoperability with a particular external identity provider or prove tenant isolation.
+
+## Row-level filters
+
+`Mtpr:Authorization:RowFilters:{entity}:{role}` lists `field:operator:value` filters (the list-query syntax). `RowFilterPermissions` resolves `{claim:type}` values from the caller's claims. Filters of one role are AND-ed and the groups of all matching roles are OR-ed. A missing claim makes that role's group unusable; an entity with a policy and no usable group matches no rows. Entities without a policy are unchanged. The policy reloads at runtime.
+
+The list endpoint passes the groups in `RecordQuery.Scope`, which `SqliteQueryBuilder` adds to the `WHERE` clause with the caller's own filters, so a caller filter can only narrow the result. GET by id uses a scoped database query. PUT, PATCH and DELETE check visibility inside the same SQLite write transaction as the change; records outside the scope return HTTP 404 (`RecordNotFound`). POST and updates also check the final stored record against the scope in that transaction. If it is outside the scope, the write and its audit entries roll back and the response is HTTP 404.
+
+Scope is passed explicitly to the engine; direct engine callers that omit it and direct database access bypass row filtering. Cascaded changes and audit snapshots are not filtered. Removing an entity's row policy removes the restriction, and multiple matching roles widen access by union. Tenant isolation remains open.
+
+## Runtime reload of policies
+
+`ReloadablePolicy<T>` builds the entity, field write, field read and row filter policies from `IConfiguration` and rebuilds them through `ChangeToken.OnChange` whenever configuration reloads, so changes apply to the next request without a restart. The new instance replaces the old one atomically. The first build at startup must succeed. If a later build is invalid, the error is logged, the previous valid policy stays active and requests continue to use it.
+
+Only reloadable configuration sources trigger this: `appsettings*.json` (the default host enables `reloadOnChange`), other file providers with reload enabled, and providers that signal changes. Environment variables and command-line arguments are read once and need a restart. Each row scope is captured when the endpoint starts its database operation; other policy checks in the request may observe a different reload. JWT authority, audience and signing settings are not reloaded.
+
+Setting an `IConfiguration` value programmatically does not itself signal a reload. Tests explicitly reload the configuration root after changing a value. Row-filter operators and basic syntax are checked on reload, while field existence and value types are validated when a query runs. An invalid reload keeps the previous policy, which may be less restrictive than the intended new one; inspect logs and verify the effective access after changes.

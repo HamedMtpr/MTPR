@@ -78,15 +78,17 @@ Limitations: error messages and validation failures can still mention hidden fie
 | --- | --- |
 | Startup failure | HTTPS authority, nonempty audience, and spelling of configured operations. |
 | HTTP 401 | Bearer token presence, signature, issuer, audience and lifetime; issuer discovery and signing-key availability. |
-| HTTP 403 | Principal role claims, role spelling and matching entity and operation grants; restart after changing grants. |
+| HTTP 403 | Principal role claims, role spelling and matching entity and operation grants; changes apply without restart, check the log for "Invalid ... policy ignored". |
 | Unexpected data access | Broad role grants, wildcard entity grants, direct database or engine access, and cascade behavior. |
 
 Do not log or paste bearer tokens when troubleshooting. Identity-provider settings and role claims should be checked against the actual deployment. If permissions are changed or removed at the provider, account for the lifetime of already issued tokens.
 
 ## Data protection and recovery
 
-The API does not implement row filters or tenant isolation. An entity-level grant covers all records for that operation. Field read grants hide fields only for configured entities. SQLite cascades and set-null changes do not check grants on related entities. Restrict direct database and engine access because endpoint authorization does not apply there.
+The API does not implement tenant isolation; row filters apply only where configured. An entity-level grant covers all records for that operation. Field read grants hide fields only for configured entities. SQLite cascades and set-null changes do not check grants on related entities. Restrict direct database and engine access because endpoint authorization does not apply there.
 
 Successful direct writes add snapshots to `__mtpr_audit` in the same transaction. The table contains potentially sensitive values and is protected only by the database's access controls. It has no built-in retention, query API, independent storage or tamper detection. Cascades, direct SQL, reads and failed or denied requests are not logged. Subject and issuer can be null. Existing rows created before the issuer column was added retain a null issuer; do not infer their issuer. The column is added on the next successful direct write. Plan storage capacity and backups for growth; if audit insertion fails, the corresponding write rolls back. Do not treat this partial log as a complete audit trail. Cascaded deletes and set-null changes appear as separate rows with `caused_by` set to the root `entity/id`; denied requests appear as `denied` rows with the reason in `detail`; `request_id` ties rows of one request together. Triggers block UPDATE and DELETE on the table, so retention requires dropping the triggers deliberately and is not recommended without a backup. Reads, 401 responses and rolled-back writes are not recorded.
 
 Back up the database and matching definitions together, along with a separately protected copy of the deployment's authentication and authorization configuration. Stop the API and other writers before restoring. Verify authentication, allowed and denied operations, and representative data in an isolated copy before resuming service. Refer to the M3 operations guide for definition reloads and SQLite recovery details.
+
+Row filters (`Mtpr:Authorization:RowFilters`) apply only to API requests on configured entities and reload when the configuration provider signals a change. Records outside the scope return 404. Creates and updates that produce an out-of-scope record roll back. Audit rows and cascaded changes are not filtered. Removing an entity policy removes its row restriction; verify policy changes with allowed and denied requests. An invalid reload retains the previous policy, which may be less restrictive than the intended change.

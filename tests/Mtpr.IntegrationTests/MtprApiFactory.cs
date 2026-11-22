@@ -4,19 +4,24 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Security.Claims;
-using System.Text.Encodings.Web;
 
 namespace Mtpr.IntegrationTests;
 
 /// <summary>Hosts the API against a temp definitions directory and a temp SQLite file.</summary>
 public sealed class MtprApiFactory : WebApplicationFactory<Program>
 {
+    private static readonly string[] testActions = [
+            "read",
+            "create",
+            "update",
+            "delete"
+        ];
+
     public bool UseTestAuthentication { get; set; } = true;
     public bool GrantTestPermissions { get; set; } = true;
     public Dictionary<string, string?> AdditionalConfiguration { get; } = [];
+    public List<Claim> ExtraClaims { get; } = [];
     public Action<JwtBearerOptions>? ConfigureJwtBearer { get; set; }
     public string Root { get; } = Directory.CreateTempSubdirectory("mtpr-").FullName;
 
@@ -37,8 +42,11 @@ public sealed class MtprApiFactory : WebApplicationFactory<Program>
                         $"Data Source={Path.Combine(Root, "test.db")};Pooling=False"
                 };
             if (GrantTestPermissions)
-                foreach (var (action, index) in new[] { "read", "create", "update", "delete" }.Select((action, index) => (action, index)))
+                foreach (var (action, index) in
+                         testActions
+                             .Select((action, index) => (action, index)))
                     settings[$"Mtpr:Authorization:Roles:test-role:*:{index}"] = action;
+
             foreach (var pair in AdditionalConfiguration)
                 settings[pair.Key] = pair.Value;
             config.AddInMemoryCollection(settings);
@@ -47,6 +55,7 @@ public sealed class MtprApiFactory : WebApplicationFactory<Program>
             {
                 if (ConfigureJwtBearer is not null)
                     services.Configure(JwtBearerDefaults.AuthenticationScheme, ConfigureJwtBearer);
+                services.AddSingleton<IReadOnlyList<Claim>>(ExtraClaims);
                 if (UseTestAuthentication)
                     services.AddAuthentication(options =>
                         {
@@ -68,25 +77,5 @@ public sealed class MtprApiFactory : WebApplicationFactory<Program>
 
         if (disposing && Directory.Exists(Root))
             Directory.Delete(Root, true);
-    }
-}
-
-public sealed class TestAuthenticationHandler(
-    IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger,
-    UrlEncoder encoder) : 
-    AuthenticationHandler<AuthenticationSchemeOptions>(options, 
-        logger, 
-        encoder)
-{
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
-        var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "test-user"), new Claim(ClaimTypes.Role, "test-role")],
-            Scheme.Name);
-        
-        return Task.FromResult(AuthenticateResult.Success(
-            new AuthenticationTicket(new ClaimsPrincipal(identity), 
-                Scheme.Name)));
     }
 }

@@ -54,3 +54,7 @@ The JWT integration tests simulate the identity provider; they do not require th
 The `__mtpr_audit` table is created in the SQLite database by the first successful direct create, update or delete. The read-only sample above does not create it. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.
 
 Direct writes also record the authenticated subject and issuer when those claims are available. An older audit table is upgraded on its next successful direct write; older rows retain a null issuer. Cascaded deletes and set-null changes are recorded with `caused_by`, denied requests (HTTP 403) are recorded as `denied` rows, every row has a `request_id`, and the table rejects UPDATE and DELETE through triggers. The table gains the new columns and triggers on its next successful append.
+
+Optional row filters: set `Mtpr:Authorization:RowFilters:note:editor:0` to `tenant:eq:{claim:tenant}`. See the M4 implementation document for semantics.
+
+The row filter is also checked for direct creates and for the final state of updates. A write outside the configured scope returns HTTP 404 and is rolled back. A missing entity policy leaves its rows unrestricted by this feature.
