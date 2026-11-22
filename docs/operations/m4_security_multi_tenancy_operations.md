@@ -45,9 +45,9 @@ Optionally restrict which input fields a role may supply under `Mtpr:Authorizati
 }
 ```
 
-The entity operation grant (`create` or `update`) is still required. For a configured entity, POST and PATCH are rejected with HTTP 403 if any supplied field is not granted or the body is not a JSON object; PUT requires `*`. Roles without a field grant cannot write to that entity. Entities without a policy keep their entity-level behavior. Entity and field names are case-insensitive, an entity name of `*` is not supported, and grants from multiple roles combine. The policy loads at startup, so restart after changes. Startup fails if an entity, role or field list is empty. Environment variable form: `Mtpr__Authorization__FieldWrites__product__editor__0=title`.
+The entity operation grant (`create` or `update`) is still required. For a configured entity, POST and PATCH are rejected with HTTP 403 if any supplied field is not granted or the body is not a JSON object; PUT requires `*`. Roles without a field grant cannot write to that entity. Entities without a policy keep their entity-level behavior. Entity and field names are case-insensitive, an entity name of `*` is not supported, and grants from multiple roles combine. Changes from a reloadable configuration provider apply without a restart; environment variable changes require a restart. Startup fails if an entity, role or field list is empty, while an invalid reload retains the previous policy. Environment variable form: `Mtpr__Authorization__FieldWrites__product__editor__0=title`.
 
-The policy controls only fields supplied by the caller. It does not control defaults, computed values or cascades.
+The policy also applies to non-null server-generated values on create, computed changes on update and set-null changes on related records. Cascaded deletes additionally require the related entity's delete grant.
 
 ## Configure field read grants
 
@@ -68,7 +68,7 @@ Optionally restrict which fields a role may read under `Mtpr:Authorization:Field
 }
 ```
 
-The entity `read` grant is still required. For a configured entity, a GET list request is rejected with HTTP 403 if `fields`, `sort` or `filter` references a field that is not granted, since sorting or filtering would reveal hidden values. `id` is always readable. Responses of GET, POST, PUT and PATCH contain only granted fields, so a writer without a read grant still succeeds but sees only `id`. Roles without a read grant cannot read that entity; with no `fields` parameter the caller gets the granted subset. Entities without a policy are unchanged. Names are case-insensitive, an entity name of `*` is not supported, grants from several roles combine, and the policy loads at startup. Environment variable form: `Mtpr__Authorization__FieldReads__product__viewer__0=title`.
+The entity `read` grant is required for GET requests. For a configured entity, a GET list request is rejected with HTTP 403 if `fields`, `sort` or `filter` references a field that is not granted, since sorting or filtering would reveal hidden values. `id` is always readable. Responses of GET, POST, PUT and PATCH contain only granted fields. Without a field read grant, list requests are denied and individual record responses contain only `id`. Entities without a policy are unchanged. Names are case-insensitive, an entity name of `*` is not supported, and grants from several roles combine. Changes from a reloadable configuration provider apply without a restart; environment variable changes require a restart. An invalid reload retains the previous policy. Environment variable form: `Mtpr__Authorization__FieldReads__product__viewer__0=title`.
 
 Limitations: error messages and validation failures can still mention hidden field names, DELETE and audit snapshots are not filtered, and direct database access is unaffected.
 

@@ -8,7 +8,7 @@
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-M4 is in progress. JWT authentication, entity and field grants, row filters, tenant isolation for the supported single-process API deployment and audit records are implemented. Complete audit coverage remains open; run the prototype in a trusted environment.
+M4 implements JWT authentication, entity and field grants, row filters, tenant isolation for the supported single-process API deployment, and transactional audit records for managed SQLite tables. Audit coverage has the deployment boundaries described in the implementation and operations guides; run the prototype in a trusted environment.
 
 ## Configure and run
 
