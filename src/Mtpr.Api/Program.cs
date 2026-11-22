@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mtpr.Api;
 using Mtpr.Api.Authorization;
 using Mtpr.Engine;
+using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
+using Mtpr.Engine.Persistence.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +30,7 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuditActorAccessor, HttpAuditActorAccessor>();
+builder.Services.AddSingleton<ITenantWriteScopeAccessor, HttpTenantWriteScopeAccessor>();
 
 builder.Services.AddMtprEngine(
     p =>
@@ -67,14 +70,16 @@ app.UseAuthorization();
 
 var policyLogger = app.Logger;
 
-ReloadablePolicy<EntityPermissions> entityPermissions = new(app.Configuration,
+ReloadablePolicy<EntityPermissions> entityPermissions =
+    new(app.Configuration,
     configuration => new EntityPermissions(configuration),
     policyLogger,
     "entity");
 
 ReloadablePolicy<FieldWritePermissions> fieldWritePermissions = 
     new(app.Configuration,
-        configuration => new FieldWritePermissions(configuration),
+        configuration =>
+            new FieldWritePermissions(configuration),
         policyLogger,
         "field write");
 
@@ -89,6 +94,12 @@ ReloadablePolicy<RowFilterPermissions> rowFilterPermissions =
         configuration => new RowFilterPermissions(configuration),
         policyLogger,
         "row filter");
+
+ReloadablePolicy<TenantPolicy> tenantPolicy =
+    new(app.Configuration,
+        configuration => new TenantPolicy(configuration),
+        policyLogger,
+        "tenant");
 
 var api = app.MapGroup("/api/{entity}")
     .RequireAuthorization();
@@ -119,11 +130,58 @@ api.AddEndpointFilter(async (context, next) =>
 
     var method = context.HttpContext.Request.Method;
 
+    var tenancy = tenantPolicy.Current;
+    context.HttpContext.Items["Mtpr.TenantPolicy"] = tenancy;
+    context.HttpContext.Items["Mtpr.RowFilterPermissions"] = rowFilterPermissions.Current;
+
+    if (tenancy.AppliesTo(entity) &&
+        tenancy.TenantOf(context.HttpContext.User) is null)
+        return await denyAsync(context,
+            entity,
+            "tenant:missing");
+
+    var tenant = tenancy.TenantOf(context.HttpContext.User);
+
+    if (tenant is not null)
+        context.HttpContext.Items["Mtpr.TenantWriteScope"] =
+            new TenantWriteScope(tenant, tenancy.Fields);
+
+    var catalog = context.HttpContext.RequestServices.GetRequiredService<IDefinitionCatalog>();
+    using var catalogLease = await catalog.AcquireReadLeaseAsync(
+        context.HttpContext.RequestAborted);
+    using var catalogSnapshot = catalog.PinSnapshot();
+
+    if (tenancy.AppliesTo(entity) ||
+        method is "POST" or "PUT" or "PATCH" or "DELETE")
+    {
+        var definitions = await catalog.ListAsync(context.HttpContext.RequestAborted);
+        var definition = definitions.FirstOrDefault(item =>
+            item.Name.Equals(entity, StringComparison.OrdinalIgnoreCase));
+
+        if ((definition is not null &&
+             !tenancy.IsValidDefinition(definition)) ||
+            (method is "POST" or "PUT" or "PATCH" or "DELETE" &&
+             (tenancy.HasTenantRelations(entity, definitions) ||
+              definitions.Any(item =>
+                  !tenancy.IsValidDefinition(item)))))
+            return await denyAsync(context,
+                entity,
+                "tenant:unsafe-definition");
+    }
+
     if (method is "POST" or "PUT" or "PATCH")
     {
         var body = context.Arguments
             .OfType<JsonElement>()
             .FirstOrDefault();
+
+        if (tenancy.Conflicts(context.HttpContext.User,
+                entity,
+                body))
+            return
+                await denyAsync(context,
+                    entity,
+                    $"tenant:{method}");
 
         if (!fieldWritePermissions.Current
                 .Allows(context.HttpContext.User,
@@ -158,14 +216,15 @@ api.MapPost("/",
     async (string entity,
         JsonElement body,
         ClaimsPrincipal user,
+        HttpContext httpContext,
         IEntityService service,
         CancellationToken ct) =>
 {
     var created =
         await service.CreateAsync(entity, 
-            BodyReader.ToInput(body),
+            stamp(httpContext, user, entity, body),
             ct,
-            rowFilterPermissions.Current.ScopeOf(user, entity));
+            scopeOf(httpContext, user, entity));
 
     return Results.Created($"/api/{entity}/{created["id"]}", created);
 });
@@ -178,6 +237,7 @@ api.MapGet("/",
             string? fields,
             HttpRequest request,
             ClaimsPrincipal user,
+            HttpContext httpContext,
             IEntityService service,
             CancellationToken ct)
     => Results.Ok(await service.ListAsync(entity,
@@ -188,65 +248,84 @@ api.MapGet("/",
             request.Query["filter"]
                 .Select(v => v ?? string.Empty)
                 .ToArray(),
-            rowFilterPermissions.Current.ScopeOf(user, entity)),
+            scopeOf(httpContext, user, entity)),
         ct)));
 
 api.MapGet("/{id:guid}",
     async (string entity,
             Guid id,
             ClaimsPrincipal user,
+            HttpContext httpContext,
             IEntityService service,
             CancellationToken ct) => 
-        Results.Ok((object?)await service.GetAsync(entity, 
+        Results.Ok(await service.GetAsync(entity,
             id,
             ct, 
-            rowFilterPermissions.Current.ScopeOf(user, entity))));
+            scopeOf(httpContext, user, entity))));
 
 api.MapPut("/{id:guid}",
     async (string entity,
             Guid id,
             JsonElement body,
             ClaimsPrincipal user,
+            HttpContext httpContext,
             IEntityService service,
             CancellationToken ct) => 
-        Results.Ok((object?)await service.UpdateAsync(entity,
+        Results.Ok(await service.UpdateAsync(entity,
             id,
-            BodyReader.ToInput(body),
+            stamp(httpContext, user, entity, body),
             false,
             ct,
-            rowFilterPermissions.Current.ScopeOf(user, entity))));
+            scopeOf(httpContext, user, entity))));
 
 api.MapPatch("/{id:guid}",
     async (string entity,
             Guid id,
             JsonElement body,
             ClaimsPrincipal user,
+            HttpContext httpContext,
             IEntityService service,
             CancellationToken ct) =>
-        Results.Ok((object?)await service.UpdateAsync(entity,
+        Results.Ok(await service.UpdateAsync(entity,
             id,
-            BodyReader.ToInput(body),
+            stamp(httpContext, user, entity, body),
             true,
             ct,
-            rowFilterPermissions.Current.ScopeOf(user, entity))));
+            scopeOf(httpContext, user, entity))));
 
 api.MapDelete("/{id:guid}",
     async (string entity,
         Guid id,
         ClaimsPrincipal user,
+        HttpContext httpContext,
         IEntityService service,
         CancellationToken ct) =>
 {
     await service.DeleteAsync(entity, 
         id, 
         ct,
-        rowFilterPermissions.Current.ScopeOf(user, entity));
+        scopeOf(httpContext, user, entity));
 
     return Results.NoContent();
 });
 
 app.Run();
 return;
+
+IReadOnlyList<IReadOnlyList<string>>? scopeOf(HttpContext context,
+    ClaimsPrincipal user,
+    string entity) =>
+    ((TenantPolicy)context.Items["Mtpr.TenantPolicy"]!).Scope(user,
+        entity,
+        ((RowFilterPermissions)context.Items["Mtpr.RowFilterPermissions"]!).ScopeOf(user, entity));
+
+IReadOnlyDictionary<string, JsonElement> stamp(HttpContext context,
+    ClaimsPrincipal user,
+    string entity,
+    JsonElement body) =>
+    ((TenantPolicy)context.Items["Mtpr.TenantPolicy"]!).Stamp(user,
+        entity,
+        BodyReader.ToInput(body));
 
 static async Task<object?> denyAsync(EndpointFilterInvocationContext context,
     string entity,

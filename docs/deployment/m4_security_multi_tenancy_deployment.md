@@ -8,7 +8,7 @@
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-This prototype is intended for a trusted environment. Entity grants do not provide field or row isolation; tenant isolation remains unimplemented. Cascaded changes to related entities are audited but not separately authorized. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
+This prototype is intended for a trusted environment. Tenant isolation applies only to entities listed under `Mtpr:Tenancy:Entities`; make sure the identity provider issues the tenant claim and that clients cannot choose it. Configure every entity in a connected tenant reference graph. Run one API process per database: catalog leases do not coordinate other processes. Direct database and engine access bypass API checks. The example uses framework-dependent publish, the pinned SDK to build, and a compatible ASP.NET Core runtime on the target host.
 
 Optional input-field write grants can restrict the properties submitted to POST and PATCH for a configured entity. They do not restrict indirect changes, and PUT requires a wildcard field grant. Configure them alongside entity grants as described in the operations guide and restart the API after changes.
 

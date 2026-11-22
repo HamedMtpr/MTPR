@@ -8,7 +8,7 @@
 - [Sample order definition](../examples/m3-order/order.json)
 - [SDK version](../../global.json)
 
-M4 is in progress. JWT authentication, entity-level role permissions, optional field write and read grants, and audit records for writes, cascaded deletes, set-null changes and denied requests are implemented; row authorization and tenant isolation are not.
+M4 is in progress. JWT authentication, entity and field grants, row filters, tenant isolation for the supported single-process API deployment and audit records are implemented. Complete audit coverage remains open; run the prototype in a trusted environment.
 
 ## Configure and run
 
@@ -55,6 +55,8 @@ The `__mtpr_audit` table is created in the SQLite database by the first successf
 
 Direct writes also record the authenticated subject and issuer when those claims are available. An older audit table is upgraded on its next successful direct write; older rows retain a null issuer. Cascaded deletes and set-null changes are recorded with `caused_by`, denied requests (HTTP 403) are recorded as `denied` rows, every row has a `request_id`, and the table rejects UPDATE and DELETE through triggers. The table gains the new columns and triggers on its next successful append.
 
-Optional row filters: set `Mtpr:Authorization:RowFilters:note:editor:0` to `tenant:eq:{claim:tenant}`. See the M4 implementation document for semantics.
+Optional tenant isolation: set `Mtpr:Tenancy:Entities:note` to the tenant field name (claim `tenant_id` by default, see `Mtpr:Tenancy:ClaimType`). Optional row filters: set `Mtpr:Authorization:RowFilters:note:editor:0` to `tenant:eq:{claim:tenant}`. See the M4 implementation document for semantics.
+
+The tenant field must be an ordinary string field and each unique group must include it. Configure every entity in a connected tenant reference graph; writes are denied when the graph includes an unscoped entity. References and cascading changes are checked against the caller's tenant. Unlisted entities are not tenant-scoped.
 
 The row filter is also checked for direct creates and for the final state of updates. A write outside the configured scope returns HTTP 404 and is rolled back. A missing entity policy leaves its rows unrestricted by this feature.

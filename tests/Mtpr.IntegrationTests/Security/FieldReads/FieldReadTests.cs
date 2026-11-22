@@ -33,12 +33,14 @@ public partial class FieldReadTests : IntegrationTest
         using var fetched =
             await client.GetAsync($"/api/product/{id}", ct);
 
+        fetched.StatusCode.Should().Be(HttpStatusCode.OK);
         var record = await fetched.Content.ReadFromJsonAsync<JsonElement>(ct);
         record.TryGetProperty("secret", out _).Should().BeFalse();
 
         using var listed =
             await client.GetAsync("/api/product", ct);
 
+        listed.StatusCode.Should().Be(HttpStatusCode.OK);
         var list =
             await listed.Content.ReadFromJsonAsync<JsonElement>(ct);
         list[0].TryGetProperty("secret", out _).Should().BeFalse();
@@ -48,6 +50,7 @@ public partial class FieldReadTests : IntegrationTest
                 new { title = "Paper" },
                 ct);
 
+        patched.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await patched.Content.ReadFromJsonAsync<JsonElement>(ct);
         updated.TryGetProperty("secret", out _).Should().BeFalse();
     }

@@ -5,6 +5,12 @@
 - [M4 deployment](../deployment/m4_security_multi_tenancy_deployment.md)
 - [M4 operations](../operations/m4_security_multi_tenancy_operations.md)
 - [M4 testing](../testing/m4_security_multi_tenancy_testing.md)
+- [Tenant policy](../../src/Mtpr.Api/Authorization/TenantPolicy.cs)
+- [Tenant isolation tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantIsolationTests.cs)
+- [Tenant relation tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantRelationTests.cs)
+- [Tenant scoped relation tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantScopedRelationsTests.cs)
+- [Definition reload tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantDefinitionReloadTests.cs)
+- [Tenant transaction checks](../../src/Mtpr.Engine/Persistence/SqliteRecordStore_Tenancy.cs)
 - [API entry point](../../src/Mtpr.Api/Program.cs)
 - [Entity permissions](../../src/Mtpr.Api/EntityPermissions.cs)
 - [JWT validation tests](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests.cs)
@@ -67,9 +73,13 @@ Limits: the plan is computed before the database acts, so a concurrent writer be
 
 ## Current scope and tests
 
-Tenant isolation is not implemented; row filters apply only where configured. All records are accessible to a user with the applicable entity read grant, and fields are limited only where field grants are configured. The existing definition schema's proposed roles are not the source of runtime permissions. Do not treat business rules as access controls.
+Tenant isolation is implemented by `TenantPolicy` (`src/Mtpr.Api/Authorization`). Configure `Mtpr:Tenancy:ClaimType` (default `tenant_id`) and `Mtpr:Tenancy:Entities:{entity}` set to the entity's tenant field name. For a listed entity the API: denies (403, audited as `denied`) callers without the tenant claim; ANDs `{field}:eq:{tenant}` into every row-filter group, or uses it alone when no row filter exists, so a role cannot bypass it and out-of-tenant records return 404; overwrites the tenant field on create with the caller's tenant; and rejects with 403 any create or update body that sets the field to another tenant. Omitting the field on PUT or PATCH keeps the stored tenant. The tenant and row-filter policies are captured once for each request. The policy is a `ReloadablePolicy` and applies without a restart when the provider signals a reload. Invalid configuration (empty claim type, `*` entity key, empty field name) keeps the previous policy. Entities not listed are not tenant-scoped.
 
-Integration tests use isolated SQLite databases. JWT tests exercise the real bearer handler with a simulated discovery endpoint and signing keys, including valid and invalid issuer, audience, signature and lifetime cases. Entity authorization tests cover role, entity and operation grants and default denial. Test authentication is limited to the test host. These tests do not establish interoperability with a particular external identity provider or prove tenant isolation.
+The tenant field must be an ordinary, noncomputed string and every declared uniqueness group must include it; requests using invalid definitions are denied. Every entity in a reference graph connected to a tenant entity must be tenant-scoped or writes in that graph are denied. For fully scoped graphs, referenced records are checked against the caller's tenant in the write transaction. Deletes check every cascaded and set-null record, as well as incoming restricted references, before changing data; an out-of-tenant reference rejects and rolls back the operation. Existing invalid cross-tenant references must be repaired before the affected delete can succeed.
+
+The API holds a catalog lease and pins a definition snapshot for each request, including cascade planning. Definition refresh waits for active requests, avoiding a graph change between authorization and execution within one process. This implementation serializes API requests while the lease is held. Use a single API process for each database; separate processes and external tools do not share this in-memory lease. Direct database access and engine calls that omit scope bypass the API policy; audit snapshots are not tenant-filtered. Other row filters apply only where configured. Fields are limited only where field grants are configured.
+
+Integration tests use isolated SQLite databases. JWT tests exercise the real bearer handler with a simulated discovery endpoint and signing keys, including valid and invalid issuer, audience, signature and lifetime cases. Entity authorization tests cover role, entity and operation grants and default denial. Tenant tests cover configured standalone entities and denial of writes through related entities. Test authentication is limited to the test host; tests do not establish interoperability with a particular external identity provider.
 
 ## Row-level filters
 
@@ -77,7 +87,7 @@ Integration tests use isolated SQLite databases. JWT tests exercise the real bea
 
 The list endpoint passes the groups in `RecordQuery.Scope`, which `SqliteQueryBuilder` adds to the `WHERE` clause with the caller's own filters, so a caller filter can only narrow the result. GET by id uses a scoped database query. PUT, PATCH and DELETE check visibility inside the same SQLite write transaction as the change; records outside the scope return HTTP 404 (`RecordNotFound`). POST and updates also check the final stored record against the scope in that transaction. If it is outside the scope, the write and its audit entries roll back and the response is HTTP 404.
 
-Scope is passed explicitly to the engine; direct engine callers that omit it and direct database access bypass row filtering. Cascaded changes and audit snapshots are not filtered. Removing an entity's row policy removes the restriction, and multiple matching roles widen access by union. Tenant isolation remains open.
+Scope is passed explicitly to the engine; direct engine callers that omit it and direct database access bypass row filtering. Row filters are not applied to cascaded changes or audit snapshots. Removing an entity's row policy removes the restriction, and multiple matching roles widen access by union. Tenant checks for cascades are independent of row filters.
 
 ## Runtime reload of policies
 

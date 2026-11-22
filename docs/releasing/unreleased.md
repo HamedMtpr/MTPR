@@ -9,7 +9,7 @@
 - Entity-level role grants now control read, create, update and delete operations; access is denied by default. Configure grants under `Mtpr:Authorization:Roles` and restart after changes. Cascading deletes do not check permissions on affected entities.
 - Direct creates, updates and deletes now write before/after audit snapshots in the same SQLite transaction, with the subject when available. Cascades and direct database changes are not audited.
 - Audit entries include the subject's issuer when available; existing audit tables gain a nullable issuer column on the next successful write.
-- Field and row authorization, tenant isolation, and complete audit coverage are not yet implemented.
+- Added tenant scoping and transactional same-tenant reference and cascade checks. Reference graphs mixing scoped and unscoped entities reject writes. The supported isolation deployment uses one API process per database; complete audit coverage remains open.
 
 ## M3 business rules
 

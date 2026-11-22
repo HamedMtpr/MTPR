@@ -5,6 +5,9 @@
 - [M4 deployment](../deployment/m4_security_multi_tenancy_deployment.md)
 - [M4 operations](../operations/m4_security_multi_tenancy_operations.md)
 - [M4 implementation](../coding/m4_security_multi_tenancy_implementation.md)
+- [Tenant relation tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantRelationTests.cs)
+- [Tenant scoped relation tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantScopedRelationsTests.cs)
+- [Definition reload tests](../../tests/Mtpr.IntegrationTests/Security/Tenancy/TenantDefinitionReloadTests.cs)
 - [Authentication tests](../../tests/Mtpr.IntegrationTests/Security/AuthenticationTests.cs)
 - [JWT validation tests](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests.cs)
 - [Entity authorization tests](../../tests/Mtpr.IntegrationTests/Security/EntityAuthorizationTests.cs)
@@ -27,7 +30,7 @@ dotnet test tests/Mtpr.IntegrationTests/Mtpr.IntegrationTests.csproj --no-restor
 
 JWT tests use simulated OIDC discovery and check valid tokens and invalid issuer, audience, signature and lifetime. Authorization tests exercise role, entity and operation grants and default denial. Field write tests check rejected fields on POST and PATCH, non-object bodies, the PUT `*` requirement, wildcard grants and grants for other roles. Field read tests check removal of ungranted fields from create, get, list and patch responses, rejected `fields`, `sort` and `filter` on hidden fields, the always-readable `id`, wildcard grants and grants for other roles. Audit tests check create, update and delete snapshots, subject and UTC timestamp, and confirm that rule rejection and an audit insertion failure leave the data and audit unchanged. They also check subject and issuer from a validated JWT, upgrade of a legacy audit table, and rollback of the upgrade when insertion fails. Tests use isolated SQLite databases and do not require an external identity provider.
 
-The tests do not establish interoperability with a particular identity provider or verify tenant isolation. Cascade audit tests cover cascaded deletes with `caused_by`, set-null updates, restricted deletes leaving no rows, denied requests and the append-only triggers. Direct database changes, reads and 401 responses are outside audit coverage.
+The tests do not establish interoperability with a particular identity provider or verify tenant isolation against a real identity provider. Cascade audit tests cover cascaded deletes with `caused_by`, set-null updates, restricted deletes leaving no rows, denied requests and the append-only triggers. Direct database changes, reads and 401 responses are outside audit coverage.
 
 ## Manual checks
 
@@ -36,3 +39,7 @@ Use the M4 build guide to run the API and check valid, invalid and insufficientl
 Row filter tests (`Security/RowFilters`) cover scoped lists, caller filters that cannot widen the scope, missing claims, 404 for out-of-scope access and rollback of an update that would leave the scope.
 
 `RowFilterReloadTests` change configuration and explicitly signal reload while the host is running. They check that a new row filter applies without a restart and that an invalid reload keeps the previous policy. Assigning a configuration value alone does not signal reload.
+
+Tenant isolation tests (`Security/Tenancy/TenantIsolationTests`) cover stamping on create, rejection of creates and updates for another tenant, no cross-tenant list, get, update or delete, a PUT that omits the tenant field, denial without a tenant claim and applying the configuration without a restart.
+
+Tenant relation tests check denial of writes in mixed scoped and unscoped graphs and rejection of an invalid tenant field type. Scoped relation tests check same-tenant references, cross-tenant create and update rejection, rollback of a cross-tenant cascade and a successful same-tenant cascade. The catalog lease test checks that a definition reload waits for an active snapshot. Field read tests check HTTP status before reading the filtered responses, including single-record GET and PATCH.

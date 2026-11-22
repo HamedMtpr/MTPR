@@ -2,12 +2,14 @@ using Microsoft.Data.Sqlite;
 using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Persistence.Audit;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
+using Mtpr.Engine.Persistence.Tenancy;
 
 namespace Mtpr.Engine.Persistence;
 
 public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactory,
     IAuditActorAccessor actor,
-    IDefinitionCatalog catalog) : IRecordStore
+    IDefinitionCatalog catalog,
+    ITenantWriteScopeAccessor tenancy) : IRecordStore
 {
     private const string idKey = EntityDefinitionVerifier.IdFieldName;
 
@@ -32,13 +34,20 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
         bind(command, columns, values);
         await command.ExecuteNonQueryAsync(cancellationToken);
 
-        var record = (await findAsync(connection, 
-            transaction, 
-            definition,
-            id, 
-            cancellationToken))!;
+        var record = 
+                (await findAsync(connection, 
+                    transaction, 
+                    definition,
+                    id, 
+                    cancellationToken))!;
 
         rules("afterCreate", record, null);
+
+        await verifyTenantReferencesAsync(connection,
+            transaction, definition,
+            record, 
+            tenancy.Current,
+            cancellationToken);
 
         if (scope is not null && !await inScopeAsync(connection, transaction,
                 definition, id, scope, cancellationToken))
@@ -173,6 +182,13 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
             cancellationToken))!;
         rules("afterUpdate", record, old);
 
+        await verifyTenantReferencesAsync(connection,
+            transaction,
+            definition,
+            record, 
+            tenancy.Current, 
+            cancellationToken);
+
         if (scope is not null && !await inScopeAsync(connection, 
                 transaction,
                 definition,
@@ -225,6 +241,17 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
             transaction,
             definition,
             id,
+            cancellationToken);
+
+        verifyCascadeTenant(plan, tenancy.Current);
+
+        await verifyDeleteReferencesAsync(catalog,
+            connection,
+            transaction,
+            definition,
+            id,
+            plan,
+            tenancy.Current,
             cancellationToken);
 
         await using var command = connection.CreateCommand();
