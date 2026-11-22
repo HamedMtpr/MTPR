@@ -37,9 +37,11 @@ Before enabling field write policies, include server-generated default, lifecycl
 
 The service account needs read access to definitions and read/write access to the database directory and SQLite companion files. Keep definitions and database outside the publish directory, and back up the database and matching definitions together. A different host needs the published files, the matching runtime, definitions and host-specific absolute paths. Protect deployment configuration and the issuer's trust configuration from unauthorized modification.
 
-The first successful direct write creates the audit table in the same SQLite database. It stores full before and after snapshots, which may contain sensitive data. Protect the database and its backups accordingly; the database owner can alter the audit records, and no external or tamper-evident audit sink is provided. A failure to write the audit entry rolls back the associated data change.
+Loading definitions creates the audit table and entity triggers in the same SQLite database. It stores full before and after snapshots, which may contain sensitive data. Protect the database and its backups accordingly; the database owner can alter the audit records, and no external or tamper-evident audit sink is provided. A failure to write the audit entry rolls back the associated data change. Initialize the catalog before allowing independent SQL access.
 
-Existing audit tables are upgraded with a nullable `subject_issuer` column during the next successful direct write. Back up the database and matching definitions before deployment. Existing rows retain a null issuer; new rows record the validated token's issuer when its claim is present. Ensure the service can alter the SQLite schema as well as write the database. The same upgrade adds `request_id`, `caused_by` and `detail` columns and the append-only triggers; back up first, since the triggers also block manual cleanup.
+Existing audit tables are upgraded with a nullable `subject_issuer` column during definition migration. Back up the database and matching definitions before deployment. Existing rows retain a null issuer; API rows record the validated token's issuer when present. Ensure the service can alter the SQLite schema as well as write the database. The same upgrade adds `request_id`, `caused_by` and `detail` columns and append-only triggers; back up first, since the triggers also block manual cleanup.
+
+Independent SQL changes to managed tables are logged after migration but do not carry a trusted actor or request. Clients must enable SQLite foreign keys and register required collations. Conflicting replacement and UPSERT operations are rejected. Direct SQL bypasses API security and rules; keep database access restricted.
 
 ## Verify
 

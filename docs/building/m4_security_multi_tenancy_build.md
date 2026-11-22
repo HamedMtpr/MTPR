@@ -53,9 +53,9 @@ dotnet test MTPR.slnx --no-restore
 
 The JWT integration tests simulate the identity provider; they do not require the external provider configured for the manual check.
 
-The `__mtpr_audit` table is created in the SQLite database by the first successful direct create, update or delete. The read-only sample above does not create it. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.
+The `__mtpr_audit` table and managed-table triggers are created when definitions are loaded, including by the read-only sample above. Audit snapshots include record data; use a disposable database when experimenting and protect its contents.
 
-Direct writes also record the authenticated subject and issuer when those claims are available. An older audit table is upgraded on its next successful direct write; older rows retain a null issuer. Cascaded deletes and set-null changes are recorded with `caused_by`, denied requests (HTTP 403) are recorded as `denied` rows, every row has a `request_id`, and the table rejects UPDATE and DELETE through triggers. The table gains the new columns and triggers on its next successful append.
+API writes record the authenticated subject and issuer when those claims are available. An older audit table is upgraded during definition migration; older rows retain a null issuer. API cascades include `caused_by` and denied requests are recorded. Independent SQL writes after migration are also recorded, without an authenticated actor or cascade cause. Conflicting replacement operations are rejected to prevent unlogged deletes.
 
 Optional tenant isolation: set `Mtpr:Tenancy:Entities:note` to the tenant field name (claim `tenant_id` by default, see `Mtpr:Tenancy:ClaimType`). Optional row filters: set `Mtpr:Authorization:RowFilters:note:editor:0` to `tenant:eq:{claim:tenant}`. See the M4 implementation document for semantics.
 

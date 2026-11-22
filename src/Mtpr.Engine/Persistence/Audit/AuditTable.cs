@@ -65,6 +65,8 @@ internal static class AuditTable
 
         // Triggers come after the column upgrade: adding a column is not an UPDATE.
         command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "__mtpr_audit_store_write" (marker INTEGER);
+
             CREATE TRIGGER IF NOT EXISTS "__mtpr_audit_no_update"
             BEFORE UPDATE ON "__mtpr_audit"
             BEGIN

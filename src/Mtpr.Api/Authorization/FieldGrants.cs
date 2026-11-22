@@ -5,15 +5,13 @@ namespace Mtpr.Api.Authorization;
 /// <summary>Role grants of field names per entity, read from one configuration section.</summary>
 public sealed class FieldGrants
 {
-    private readonly string section;
-
     private readonly Dictionary<string, List<(string Role,
         HashSet<string> Fields)>> grants = 
             new(StringComparer.OrdinalIgnoreCase);
 
     public FieldGrants(IConfiguration configuration, string section)
     {
-        this.section = section;
+        this.Describe = section;
 
         foreach (var entity in configuration
                      .GetSection($"Mtpr:Authorization:{section}")
@@ -30,7 +28,7 @@ public sealed class FieldGrants
     }
 
     private string Describe =>
-        section.Replace("Field", string.Empty)
+        field.Replace("Field", string.Empty)
             .ToLowerInvariant();
 
     /// <summary>Returns null when the entity has no policy, otherwise the caller's combined grants.</summary>

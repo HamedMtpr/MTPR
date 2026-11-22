@@ -8,7 +8,7 @@ namespace Mtpr.IntegrationTests.Security.Audits;
 public partial class AuditTests : IntegrationTest
 {
     [Fact]
-    public async Task Failed_audit_insert_rolls_back_legacy_upgrade_and_record()
+    public async Task Failed_audit_insert_rolls_back_record_after_legacy_upgrade()
     {
         await using MtprApiFactory factory = new();
         factory.Define("product", definition);
@@ -53,7 +53,7 @@ public partial class AuditTests : IntegrationTest
 
         Convert.ToInt64(await command.ExecuteScalarAsync(ct))
             .Should()
-            .Be(0);
+            .Be(1);
 
         command.CommandText = "SELECT COUNT(*) FROM product";
         Convert.ToInt64(await command.ExecuteScalarAsync(ct))

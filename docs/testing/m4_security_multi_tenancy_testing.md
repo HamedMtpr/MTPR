@@ -16,6 +16,7 @@
 - [Indirect write tests](../../tests/Mtpr.IntegrationTests/Security/IndirectWrites/IndirectWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
+- [External SQL audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/ExternalSql/ExternalAuditTests.cs)
 - [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/Cascades/AuditTests_Cascade.cs)
 - [JWT audit test](../../tests/Mtpr.IntegrationTests/Security/JwtValidations/JwtValidationTests_Audit.cs)
 
@@ -29,9 +30,9 @@ dotnet test MTPR.slnx --no-restore
 dotnet test tests/Mtpr.IntegrationTests/Mtpr.IntegrationTests.csproj --no-restore --filter 'FullyQualifiedName~Security'
 ```
 
-JWT tests use simulated OIDC discovery and check valid tokens and invalid issuer, audience, signature and lifetime. Authorization tests exercise role, entity and operation grants and default denial. Field write tests check rejected fields on POST and PATCH, non-object bodies, the PUT `*` requirement, wildcard grants and grants for other roles. Field read tests check removal of ungranted fields from create, get, list and patch responses, rejected `fields`, `sort` and `filter` on hidden fields, the always-readable `id`, wildcard grants and grants for other roles. Audit tests check create, update and delete snapshots, subject and UTC timestamp, and confirm that rule rejection and an audit insertion failure leave the data and audit unchanged. They also check subject and issuer from a validated JWT, upgrade of a legacy audit table, and rollback of the upgrade when insertion fails. Tests use isolated SQLite databases and do not require an external identity provider.
+JWT tests use simulated OIDC discovery and check valid tokens and invalid issuer, audience, signature and lifetime. Authorization tests exercise role, entity and operation grants and default denial. Field write tests check rejected fields on POST and PATCH, non-object bodies, the PUT `*` requirement, wildcard grants and grants for other roles. Field read tests check removal of ungranted fields from create, get, list and patch responses, rejected `fields`, `sort` and `filter` on hidden fields, the always-readable `id`, wildcard grants and grants for other roles. Audit tests check create, update and delete snapshots, subject and UTC timestamp, and confirm that rule rejection and an audit insertion failure leave the data and audit unchanged. They also check subject and issuer from a validated JWT and upgrade of a legacy audit table. Tests use isolated SQLite databases and do not require an external identity provider.
 
-The tests do not establish interoperability with a particular identity provider or verify tenant isolation against a real identity provider. Cascade audit tests cover cascaded deletes with `caused_by`, set-null updates, restricted deletes leaving no rows, denied requests and the append-only triggers. Direct database changes, reads and 401 responses are outside audit coverage.
+The tests do not establish interoperability with a particular identity provider or verify tenant isolation against a real identity provider. Cascade audit tests cover cascaded deletes with `caused_by`, set-null updates, restricted deletes leaving no rows, denied requests and the append-only triggers. External SQL tests cover independent committed changes, rollback, cascades, audit failure and conflicting replacement. Reads and 401 responses are outside the change log.
 
 ## Manual checks
 

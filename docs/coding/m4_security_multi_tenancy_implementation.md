@@ -28,6 +28,8 @@
 - [SQLite record store](../../src/Mtpr.Engine/Persistence/SqliteRecordStore.cs)
 - [Cascade planning](../../src/Mtpr.Engine/Persistence/SqliteRecordStore_Cascade.cs)
 - [Audit table](../../src/Mtpr.Engine/Persistence/Audit/AuditTable.cs)
+- [External SQL audit triggers](../../src/Mtpr.Engine/Persistence/Audit/SqliteExternalAudit.cs)
+- [External SQL audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/ExternalSql/ExternalAuditTests.cs)
 - [Audit entry](../../src/Mtpr.Engine/Persistence/Audit/AuditEntry.cs)
 - [Audit trail for denials](../../src/Mtpr.Engine/Persistence/Audit/AuditTrail.cs)
 - [Audit actor accessor](../../src/Mtpr.Api/HttpAuditActorAccessor.cs)
@@ -57,11 +59,19 @@ The store also checks the actual non-null fields of a created record and the cha
 
 ## Transactional audit records
 
-The SQLite record store creates `__mtpr_audit` on the first successful direct write. Create, update and delete append one entry after their rules succeed and before the same transaction commits. If audit insertion fails, the data write rolls back. Each row contains an incrementing sequence, UTC timestamp, entity, record ID, operation, optional subject and subject issuer, and JSON snapshots before and after the operation. A successful update is recorded even if its values did not change. Reads and failed or rejected writes do not append an entry.
+The schema migrator creates or upgrades `__mtpr_audit` and installs audit triggers when it loads definitions. Record-store create, update and delete append one entry after their rules succeed and before the same transaction commits. If audit insertion fails, the data write rolls back. Each row contains an incrementing sequence, UTC timestamp, entity, record ID, operation, optional subject and subject issuer, and JSON snapshots before and after the operation. A successful update is recorded even if its values did not change. Reads and failed or rejected writes do not append a change entry.
 
 For API requests, `HttpAuditActorAccessor` obtains the principal's name-identifier and `iss` claims; missing claims produce null values. The normal bearer handler validates the token issuer before a write reaches the engine. Other engine hosts can register an `IAuditActorAccessor`; the default reports null values, and custom accessors are responsible for their own identity provenance. The optional issuer distinguishes equal subjects from different issuers, but neither field is guaranteed to exist. Snapshots contain all record fields and may include sensitive values. The audit table is in the same database and is neither tamper-proof nor independently retained.
 
-An existing audit table without `subject_issuer` receives the nullable column during the next successful direct write, inside the write transaction. Existing rows retain their values and have a null issuer; it is not possible to infer their historical issuer. A failed write rolls the schema change back as well. The default interface implementation returns null for issuer so existing custom accessors can continue to operate.
+An existing audit table without `subject_issuer` receives the nullable column during the next definition migration transaction. Existing rows retain their values and have a null issuer; it is not possible to infer their historical issuer. The default interface implementation returns null for issuer so existing custom accessors can continue to operate.
+
+### Independent SQLite writes
+
+After definitions have been loaded, managed entity tables have SQLite triggers for independent INSERT, UPDATE and DELETE, including cascades performed by that connection. These append in the same transaction and fail the data statement if the audit insert fails. They store `external-sql` in `detail`; subject, issuer, request and cause are unknown. Snapshots reflect SQLite storage values: booleans are integers and decimals are text. External clients must enable foreign keys and register `MTPR_DECIMAL` when required by the schema. API record-store transactions use a transactional marker to suppress these triggers and retain their existing typed snapshots, actor and cascade attribution; rollback also rolls back the marker. The marker table must remain empty outside those transactions.
+
+SQLite `REPLACE` can delete conflicting rows without firing delete triggers. Guard triggers therefore abort conflicting inserts and updates, including `INSERT OR REPLACE`, `UPDATE OR REPLACE`, conflicting `OR IGNORE` and UPSERT. Use explicit update or delete operations instead. Trigger definitions are refreshed with schema migrations. Direct SQL bypasses validation, authorization, business rules and tenant checks, even though its record changes are logged.
+
+The guarantee covers committed row changes on managed entity tables after migration, with the audit and guard triggers intact. It does not cover prior changes, other tables, DDL, file replacement, database-owner tampering or writes that disable or remove the triggers or marker safeguards. SQLite does not authenticate external SQL users; the log cannot identify them. Protect database and schema access and use an independent audit system if tamper resistance or comprehensive security-event logging is required.
 
 ### Cascades, denials and integrity
 
@@ -69,7 +79,7 @@ An existing audit table without `subject_issuer` receives the nullable column du
 
 Access denials (HTTP 403 for entity grants, field writes and field reads) are appended by `AuditTrail` as `denied` rows with an empty record ID and the reason in `detail`, for example `entity:create`, `field-write:PATCH` or `field-read:query`. `AuditTrail` uses its own connection and transaction because the request has no data transaction. If the append fails the request fails instead of silently allowing an unlogged denial.
 
-Every row also stores `request_id`, taken from `HttpContext.TraceIdentifier`, so rows of one request can be correlated. `AuditTable.EnsureAsync` creates the table, adds missing `subject_issuer`, `request_id`, `caused_by` and `detail` columns, and then creates the triggers `__mtpr_audit_no_update` and `__mtpr_audit_no_delete`, which abort with "The audit log is append-only." The columns are upgraded first because adding a column is not an update. The check runs on every append inside the caller's transaction.
+API rows also store `request_id`, taken from `HttpContext.TraceIdentifier`, so rows of one request can be correlated. `AuditTable.EnsureAsync` creates the table, adds missing `subject_issuer`, `request_id`, `caused_by` and `detail` columns, and then creates the triggers `__mtpr_audit_no_update` and `__mtpr_audit_no_delete`, which abort with "The audit log is append-only." The columns are upgraded first because adding a column is not an update. The check runs during migration and on every application append.
 
 Limits: the plan is computed before the database acts, so a concurrent writer between the two steps could make it differ, although SQLite serializes writers. The triggers stop ordinary SQL but not someone who drops them or replaces the file, so the log is append-only rather than tamper-proof. Reads, deletes of missing records, authentication failures (401) and writes rolled back by rule rejections are not recorded. There is no audit query API, retention policy or external sink.
 

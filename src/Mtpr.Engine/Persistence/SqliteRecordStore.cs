@@ -26,6 +26,11 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
 
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
+        
+        await connection.SetStoreWriteAsync(transaction,
+            true, 
+            cancellationToken);
+
         rules("beforeCreate", values, null);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -67,6 +72,10 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
             "create",
             null, 
             record, 
+            cancellationToken);
+
+        await connection.SetStoreWriteAsync(transaction, 
+            false, 
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -126,6 +135,10 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
+        
+        await connection.SetStoreWriteAsync(transaction, 
+            true, 
+            cancellationToken);
         
         var old = 
             scope is null
@@ -214,6 +227,10 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
             record,
             cancellationToken);
 
+        await connection.SetStoreWriteAsync(transaction,
+            false, 
+            cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
         return record;
     }
@@ -224,6 +241,11 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
+        
+        await connection.SetStoreWriteAsync(transaction, 
+            true, 
+            cancellationToken);
+
         var old = scope is null
             ? await findAsync(connection, 
                 transaction, 
@@ -293,6 +315,10 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
             "delete",
             old, 
             null, 
+            cancellationToken);
+
+        await connection.SetStoreWriteAsync(transaction,
+            false, 
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
