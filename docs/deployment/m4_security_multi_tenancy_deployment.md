@@ -33,6 +33,8 @@ dotnet ./artifacts/mtpr-m4-api/Mtpr.Api.dll
 
 Replace issuer and audience with values for your OIDC provider and API. Configure role grants appropriate to the deployment; the sample permits only reading orders. The API must be able to reach the issuer's HTTPS discovery and signing-key endpoints. Bind to a suitable interface and terminate TLS securely for network access. The example listens only on loopback.
 
+Before enabling field write policies, include server-generated default, lifecycle, computed and tenant fields used by each role. Review related entity delete and update grants and set-null field grants for cascade operations. Policies omitted for an entity leave its fields unrestricted by that policy. Validate representative allowed and denied writes before rollout.
+
 The service account needs read access to definitions and read/write access to the database directory and SQLite companion files. Keep definitions and database outside the publish directory, and back up the database and matching definitions together. A different host needs the published files, the matching runtime, definitions and host-specific absolute paths. Protect deployment configuration and the issuer's trust configuration from unauthorized modification.
 
 The first successful direct write creates the audit table in the same SQLite database. It stores full before and after snapshots, which may contain sensitive data. Protect the database and its backups accordingly; the database owner can alter the audit records, and no external or tamper-evident audit sink is provided. A failure to write the audit entry rolls back the associated data change.

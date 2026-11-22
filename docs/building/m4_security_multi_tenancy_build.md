@@ -43,6 +43,8 @@ A valid token with the `reader` role receives the order list, initially empty wi
 
 To restrict input fields for a role that has an entity create or update grant, set for example `Mtpr__Authorization__FieldWrites__order__editor__0` to `title` before starting the API. On configured entities, POST and PATCH reject other supplied fields; PUT requires the role's `*` field grant. A missing field policy leaves the entity's existing write access unchanged. To hide fields on reads, set for example `Mtpr__Authorization__FieldReads__order__editor__0` to `title`; responses then contain only `id` and `title` and list queries naming other fields return 403. The operations guide describes the configuration and its limitations.
 
+Write grants must also cover non-null default, lifecycle, computed and tenant values created by the server, and computed fields changed by an update. Cascaded deletes require delete grants on affected entities; set-null requires update and field grants on affected entities. A denied indirect change rolls back the complete operation.
+
 To run all automated checks from the repository root:
 
 ```powershell

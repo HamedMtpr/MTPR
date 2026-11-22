@@ -8,6 +8,17 @@ public sealed class FieldWritePermissions(IConfiguration configuration)
 {
     private readonly FieldGrants grants = new(configuration, "FieldWrites");
 
+    public bool AllowsFields(ClaimsPrincipal user,
+        string entity,
+        IEnumerable<string> fields)
+    {
+        var permitted = grants.Permitted(user, entity);
+
+        return permitted is null || 
+               permitted.Contains("*") ||
+               fields.All(permitted.Contains);
+    }
+
     public bool Allows(ClaimsPrincipal user,
         string entity,
         string method,

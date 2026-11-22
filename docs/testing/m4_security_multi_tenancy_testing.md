@@ -13,6 +13,7 @@
 - [Entity authorization tests](../../tests/Mtpr.IntegrationTests/Security/EntityAuthorizationTests.cs)
 - [Field read tests](../../tests/Mtpr.IntegrationTests/Security/FieldReads/FieldReadTests.cs)
 - [Field write tests](../../tests/Mtpr.IntegrationTests/Security/FieldWrites/FieldWriteTests.cs)
+- [Indirect write tests](../../tests/Mtpr.IntegrationTests/Security/IndirectWrites/IndirectWriteTests.cs)
 - [Audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests.cs)
 - [Audit upgrade tests](../../tests/Mtpr.IntegrationTests/Security/Audits/AuditTests_Legacy.cs)
 - [Cascade audit tests](../../tests/Mtpr.IntegrationTests/Security/Audits/Cascades/AuditTests_Cascade.cs)
@@ -43,3 +44,5 @@ Row filter tests (`Security/RowFilters`) cover scoped lists, caller filters that
 Tenant isolation tests (`Security/Tenancy/TenantIsolationTests`) cover stamping on create, rejection of creates and updates for another tenant, no cross-tenant list, get, update or delete, a PUT that omits the tenant field, denial without a tenant claim and applying the configuration without a restart.
 
 Tenant relation tests check denial of writes in mixed scoped and unscoped graphs and rejection of an invalid tenant field type. Scoped relation tests check same-tenant references, cross-tenant create and update rejection, rollback of a cross-tenant cascade and a successful same-tenant cascade. The catalog lease test checks that a definition reload waits for an active snapshot. Field read tests check HTTP status before reading the filtered responses, including single-record GET and PATCH.
+
+Indirect write tests verify that defaults and computed changes require field grants, cascade deletes require related entity delete grants, and set-null updates require related field grants. They verify rollback and successful operations with the required role.

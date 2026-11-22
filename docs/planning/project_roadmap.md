@@ -85,7 +85,7 @@ Local test results are the current milestone verification in the absence of CI. 
 ### M4 - Security and Multi-Tenancy (Weeks 10-11)
 
 - [x] Authentication integration (OIDC/JWT).
-- [ ] Role-based access control at entity and field level (HTTP grants implemented; indirect writes and relation effects need enforcement).
+- [x] Role-based access control at entity and field level for the HTTP API, including indirect writes and relation effects.
 - [x] Row-level filters.
 - [x] Tenant isolation strategy for the supported single-process API deployment, including scoped references and cascading changes.
 - [ ] Audit log of all changes (direct and cascade changes are covered; direct database writes and other events remain outside the log).

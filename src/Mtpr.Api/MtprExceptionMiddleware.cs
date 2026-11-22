@@ -2,6 +2,7 @@ using Mtpr.Core.Exceptions;
 using Mtpr.Engine.Errors;
 using Mtpr.Engine.Validation;
 using Microsoft.Data.Sqlite;
+using Mtpr.Engine.Persistence.Authorization;
 
 namespace Mtpr.Api;
 
@@ -13,6 +14,16 @@ public class MtprExceptionMiddleware(RequestDelegate next, ILogger<MtprException
         try
         {
             await next(context);
+        }
+        catch (RecordWriteForbiddenException)
+        {
+            await writeAsync(context,
+                StatusCodes.Status403Forbidden, 
+                new
+            {
+                code = "forbidden",
+                message = "The operation is not permitted."
+            });
         }
         catch (EntityValidationException e)
         {

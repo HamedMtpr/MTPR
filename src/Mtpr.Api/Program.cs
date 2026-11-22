@@ -8,6 +8,7 @@ using Mtpr.Engine;
 using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
 using Mtpr.Engine.Persistence.Tenancy;
+using Mtpr.Engine.Persistence.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuditActorAccessor, HttpAuditActorAccessor>();
 builder.Services.AddSingleton<ITenantWriteScopeAccessor, HttpTenantWriteScopeAccessor>();
+builder.Services.AddSingleton<IRecordWriteAuthorization, HttpRecordWriteAuthorization>();
 
 builder.Services.AddMtprEngine(
     p =>
@@ -120,7 +122,16 @@ api.AddEndpointFilter(async (context, next) =>
         _ => string.Empty
     };
 
-    if (!entityPermissions.Current.Allows(context.HttpContext.User,
+    var entities = entityPermissions.Current;
+    var writes = fieldWritePermissions.Current;
+    var reads = fieldReadPermissions.Current;
+
+    context.HttpContext.Items["Mtpr.RecordWritePolicy"] =
+        new RecordWritePolicy(context.HttpContext.User,
+            entities,
+            writes);
+
+    if (!entities.Allows(context.HttpContext.User,
             entity,
             action))
         return
@@ -183,7 +194,7 @@ api.AddEndpointFilter(async (context, next) =>
                     entity,
                     $"tenant:{method}");
 
-        if (!fieldWritePermissions.Current
+        if (!writes
                 .Allows(context.HttpContext.User,
                     entity,
                     method,
@@ -195,7 +206,7 @@ api.AddEndpointFilter(async (context, next) =>
     }
 
     if (method == "GET" &&
-        !fieldReadPermissions.Current
+        !reads
             .AllowsQuery(context.HttpContext.User,
                 entity,
                 context.HttpContext.Request.Query))
@@ -203,10 +214,20 @@ api.AddEndpointFilter(async (context, next) =>
             entity,
             "field-read:query");
 
-    var result = await next(context);
+    object? result;
+    try
+    {
+        result = await next(context);
+    }
+    catch (RecordWriteForbiddenException)
+    {
+        return await denyAsync(context,
+            entity, 
+            "field-write:indirect");
+    }
 
     return result is IResult response
-        ? fieldReadPermissions.Current.Filter(context.HttpContext.User,
+        ? reads.Filter(context.HttpContext.User,
             entity,
             response)
         : result;

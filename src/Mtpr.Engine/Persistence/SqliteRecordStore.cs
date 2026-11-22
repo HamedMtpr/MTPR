@@ -3,13 +3,15 @@ using Mtpr.Engine.Definitions;
 using Mtpr.Engine.Persistence.Audit;
 using Mtpr.Engine.Persistence.AuditActorAccessors;
 using Mtpr.Engine.Persistence.Tenancy;
+using Mtpr.Engine.Persistence.Authorization;
 
 namespace Mtpr.Engine.Persistence;
 
 public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactory,
     IAuditActorAccessor actor,
     IDefinitionCatalog catalog,
-    ITenantWriteScopeAccessor tenancy) : IRecordStore
+    ITenantWriteScopeAccessor tenancy,
+    IRecordWriteAuthorization authorization) : IRecordStore
 {
     private const string idKey = EntityDefinitionVerifier.IdFieldName;
 
@@ -55,6 +57,8 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
                 Errors.MtprErrors.RecordNotFound,
                 new Core.Exceptions.ExceptionParameter(definition.Name),
                 new Core.Exceptions.ExceptionParameter(id));
+
+        authorization.EnsureCreate(definition, record);
 
         await auditAsync(connection, 
             transaction, 
@@ -197,6 +201,10 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
                 cancellationToken))
             return null;
 
+        authorization.EnsureUpdate(definition, 
+            old, 
+            record);
+
         await auditAsync(connection,
             transaction, 
             definition.Name,
@@ -244,6 +252,15 @@ public partial class SqliteRecordStore(ISqliteConnectionFactory connectionFactor
             cancellationToken);
 
         verifyCascadeTenant(plan, tenancy.Current);
+
+        foreach (var row in plan.Deletes)
+            authorization.EnsureDelete(row.Definition);
+
+        foreach (var (row, after) in 
+                 plan.Updates)
+            authorization.EnsureUpdate(row.Definition, 
+                row.Row,
+                after);
 
         await verifyDeleteReferencesAsync(catalog,
             connection,
