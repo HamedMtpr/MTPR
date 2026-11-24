@@ -11,3 +11,4 @@ This document describes how to test the project.
 - [M2 relations and querying testing](m2_relations_querying_testing.md)
 - [M3 business rules testing](m3_business_rules_testing.md)
 - [M4 security and multi-tenancy testing](m4_security_multi_tenancy_testing.md)
+- [M5 local token service testing](m5_local_token_service_testing.md)

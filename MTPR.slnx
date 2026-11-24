@@ -1,13 +1,16 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Mtpr.Api/Mtpr.Api.csproj" />
     <Project Path="src/Mtpr.Core/Mtpr.Core.csproj" />
     <Project Path="src/Mtpr.Engine/Mtpr.Engine.csproj" />
-    <Project Path="src/Mtpr.Api/Mtpr.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Mtpr.Tests/Mtpr.Tests.csproj" />
     <Project Path="tests/Mtpr.IntegrationTests/Mtpr.IntegrationTests.csproj" />
+    <Project Path="tests/Mtpr.Tests/Mtpr.Tests.csproj" />
     <Project Path="tests/Mtpr.TestUtilities.Tests/Mtpr.TestUtilities.Tests.csproj" />
     <Project Path="tests/Mtpr.TestUtilities/Mtpr.TestUtilities.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Mtpr.LocalTokenService/Mtpr.LocalTokenService.csproj" />
   </Folder>
 </Solution>

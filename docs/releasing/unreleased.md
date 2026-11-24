@@ -2,6 +2,10 @@
 
 [Back to index](index.md)
 
+## M5 Alpha Release (in progress)
+
+- Added `tools/Mtpr.LocalTokenService`, a development-only token service that issues RS256 JWTs and serves OIDC discovery and JWKS so the secured API runs without an external identity provider. The signing key comes from configuration or an ignored local file; never commit it. Replace the placeholder client secrets before use.
+
 ## M4 Security and Multi-Tenancy (in progress)
 
 - CRUD endpoints require a JWT bearer token. Configure `Mtpr:Authentication:Authority` (HTTPS) and `Mtpr:Authentication:Audience` before starting the API. Existing unauthenticated clients must obtain and send a token.
