@@ -49,4 +49,4 @@ Read and delete operations resolve the definition and use the store. Update also
 
 `VerticalSliceTests` exercises the API through `WebApplicationFactory` and a temporary SQLite file. The test factory provides isolated paths and removes them on disposal. The testing guide lists the covered scenarios and commands.
 
-M1 is a single-provider prototype; it does not implement authentication, authorization, tenant isolation, relations or schema evolution. These limitations and future milestones are described in the roadmap.
+The original M1 slice used a single provider and did not include authentication, authorization, tenant isolation, relations or schema evolution. Later milestones added these capabilities within the boundaries described in their guides.

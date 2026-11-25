@@ -37,6 +37,6 @@ The next request reloads definitions and creates a table transactionally. No reb
 
 Use `POST /api/category` with `{"label":"Books"}`, `GET /api/category`, and `GET`, `PUT`, `PATCH`, or `DELETE /api/category/{id}`. `PUT` replaces all fields; `PATCH` updates only supplied fields. List supports `skip` and `take`. Validation responses contain `code`, `message` and an `errors` array with individual MTPR codes.
 
-M1 only creates tables for new entities. Changes to a definition already applied to the database are rejected with `MTPR-3002`; schema evolution is planned for M2. Invalid definitions also prevent reloading the catalog until fixed. This prototype does not provide authentication or tenant isolation.
+The original M1 slice created tables for new entities and rejected changes to applied definitions with `MTPR-3002`. M2 added additive schema evolution, and M4 added authentication and tenant isolation. Invalid definitions can still prevent reloading the catalog until fixed.
 
 Run `dotnet test MTPR.slnx` to execute unit and integration tests. The integration tests use a real temporary SQLite database.
