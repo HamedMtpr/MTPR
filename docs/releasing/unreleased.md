@@ -2,14 +2,22 @@
 
 [Back to index](index.md)
 
-## M4 Security and Multi-Tenancy (in progress)
+## M5 Alpha Release (see [v0.1.0-alpha](v0.1.0-alpha.md))
+
+- Removed unused public utilities from `Mtpr.Core`, including builders, repositories, pagination and extension helpers, and their tests. Consumers of these APIs must migrate before upgrading.
+- Added a helpdesk sample (`docs/examples/m5-helpdesk`) built purely from definitions, covered by integration tests, and a `Dockerfile` that runs the API with it.
+- Added `tools/Mtpr.LocalTokenService`, a development-only token service that issues RS256 JWTs and serves OIDC discovery and JWKS so the secured API runs without an external identity provider. The signing key comes from configuration or an ignored local file; never commit it. Replace the placeholder client secrets before use.
+- Added a release workflow that runs when a GitHub release is published (GitHub creates the tag), attaches assets and pushes the container image, plus `v0.1.0-alpha` release notes.
+- Added a README quickstart and completed the M5 build, testing, deployment, operations and monitoring guides. The container image documents mounting a definitions folder for changes without restart.
+
+## M4 Security and Multi-Tenancy
 
 - CRUD endpoints require a JWT bearer token. Configure `Mtpr:Authentication:Authority` (HTTPS) and `Mtpr:Authentication:Audience` before starting the API. Existing unauthenticated clients must obtain and send a token.
 - Integration tests exercise OIDC discovery and verify valid tokens and rejection of invalid signatures, issuers, audiences, and token lifetimes using a simulated identity provider.
-- Entity-level role grants now control read, create, update and delete operations; access is denied by default. Configure grants under `Mtpr:Authorization:Roles` and restart after changes. Cascading deletes do not check permissions on affected entities.
-- Direct creates, updates and deletes now write before/after audit snapshots in the same SQLite transaction, with the subject when available. Cascades and direct database changes are not audited.
+- Entity-level role grants control read, create, update and delete operations; access is denied by default. Optional field grants and row filters further restrict configured entities. Cascading deletes and set-null changes check permissions on affected entities.
+- Committed record changes on managed SQLite tables write before/after audit snapshots in the same transaction, including cascades and independent SQL changes after migration. The documented audit and deployment boundaries apply.
 - Audit entries include the subject's issuer when available; existing audit tables gain a nullable issuer column on the next successful write.
-- Added tenant scoping and transactional same-tenant reference and cascade checks. Reference graphs mixing scoped and unscoped entities reject writes. The supported isolation deployment uses one API process per database; complete audit coverage remains open.
+- Added tenant scoping and transactional same-tenant reference and cascade checks. Reference graphs mixing scoped and unscoped entities reject writes. The supported isolation deployment uses one API process per database; the audit log is not a complete security-event log.
 
 ## M3 business rules
 

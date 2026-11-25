@@ -22,11 +22,11 @@ MTPR is a metadata-driven backend generator. Its vision is to create backends fo
 
 | Pillar | Responsibility | Status |
 |---|---|---|
-| Definition Engine | Versioned schema for entities, fields, relations, roles, rules | Not started |
-| Metadata-Driven Execution Core | Loads definitions and executes requests generically | Not started |
-| Dynamic Data Layer | Persistence, migrations, querying from metadata | Not started |
-| Business Rule and Workflow Engine | Validation, triggers, state transitions | Not started |
-| Cross-cutting | Errors, auth, audit, observability | Partially started (exceptions) |
+| Definition Engine | Versioned schema for entities, fields, relations, roles, rules | Partial: entity definitions and references are implemented; role and rule schema drafts are not runtime contracts. |
+| Metadata-Driven Execution Core | Loads definitions and executes requests generically | Implemented for the prototype. |
+| Dynamic Data Layer | Persistence, migrations, querying from metadata | Partial: SQLite persistence, querying and additive schema changes are implemented. |
+| Business Rule and Workflow Engine | Validation, triggers, state transitions | Partial: bounded rules and lifecycle transitions are implemented; long-running workflows remain open. |
+| Cross-cutting | Errors, auth, audit, observability | Partial: errors, authentication, authorization and bounded auditing are implemented; metrics and tracing remain open. |
 
 ## 4. Milestones
 
@@ -94,11 +94,11 @@ Local test results are the current milestone verification in the absence of CI. 
 
 ### M5 - Alpha Release (Week 12)
 
-- [ ] A realistic sample application (the first target domain) built purely from configuration.
-- [ ] Quickstart in the README that works from a clean machine.
-- [ ] Fill in the placeholder docs (building, testing, deployment).
-- [ ] Container image and a basic deployment guide.
-- [ ] Tag `v0.1.0-alpha` and write release notes.
+- [x] A realistic sample application (the first target domain) built purely from configuration.
+- [x] Quickstart in the README that works from a clean machine.
+- [x] Fill in the placeholder docs (building, testing, deployment).
+- [x] Container image and a basic deployment guide.
+- [x] Tag `v0.1.0-alpha` and write release notes. (Release notes are in `docs/releasing/v0.1.0-alpha.md`; GitHub creates the tag when the release is published, and the release workflow attaches the assets.)
 
 **Exit criteria:** A new developer builds the sample app in under 30 minutes using only the docs.
 

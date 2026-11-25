@@ -1,0 +1,41 @@
+{
+  "name": "ticket",
+  "fields": [
+    { "name": "customerId", "type": "guid", "required": true,
+      "references": { "entity": "customer", "onDelete": "restrict" } },
+    { "name": "subject", "type": "string", "required": true, "minLength": 1, "maxLength": 150 },
+    { "name": "priority", "type": "int", "required": true, "default": 2, "min": 1, "max": 4 },
+    { "name": "hours", "type": "decimal", "required": true, "default": 1, "min": 0 },
+    { "name": "hourlyRate", "type": "decimal", "required": true, "default": 40, "min": 0 },
+    { "name": "cost", "type": "decimal", "required": true,
+      "computed": {
+        "operator": "multiply",
+        "left": { "field": "hours" },
+        "right": { "field": "hourlyRate" }
+      }
+    },
+    { "name": "status", "type": "string", "required": true }
+  ],
+  "lifecycle": {
+    "field": "status",
+    "initial": "open",
+    "states": [ "open", "inProgress", "resolved", "closed" ],
+    "transitions": [
+      { "from": "open", "to": "inProgress" },
+      { "from": "inProgress", "to": "resolved" },
+      { "from": "resolved", "to": "inProgress" },
+      { "from": "resolved", "to": "closed" }
+    ]
+  },
+  "rules": [
+    {
+      "trigger": "beforeCreate",
+      "condition": {
+        "operator": "greaterThan",
+        "left": { "field": "hours" },
+        "right": { "value": 40 }
+      },
+      "action": { "type": "reject", "message": "A ticket cannot be estimated above 40 hours" }
+    }
+  ]
+}

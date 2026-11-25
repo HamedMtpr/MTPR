@@ -14,7 +14,7 @@ The process reloads definitions on a request when files change. It validates all
 2. Place the completed `.json` file in the configured definitions directory. Avoid leaving a partially written JSON file in that directory while requests are being served.
 3. Request `GET /api/{entity}`. A 200 response confirms the definition was loaded and its table created. Use the CRUD checks in the testing guide if needed.
 
-The migration log is stored in the database. Editing an applied definition is rejected with `MTPR-3002`; M1 does not migrate its schema. Do not delete the log or database to force a change on an instance containing data. Schema evolution is planned for M2.
+The migration log is stored in the database. The original M1 slice rejected edits to applied definitions with `MTPR-3002`; M2 added support for additive schema changes. Do not delete the log or database to force an unsupported change on an instance containing data.
 
 ## Diagnose failures
 

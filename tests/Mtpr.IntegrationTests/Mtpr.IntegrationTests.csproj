@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <Content Include="..\..\docs\examples\m2-library\*.json" Link="m2-library\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\docs\examples\m5-helpdesk\*.json" Link="m5-helpdesk\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
