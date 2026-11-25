@@ -71,7 +71,7 @@ Guides per milestone:
 
 ## Test coverage
 
-The latest test run reports 95% statement coverage (2,057 of 2,176) for the projects under src: Mtpr.Core 100%, Mtpr.Api 96%, and Mtpr.Engine 92%. The types with the lowest coverage are SqliteTypeMap (71%), RecordValidator (79%), EntityDefinitionVerifier (82%), SqliteQueryBuilder (82%), and CreateRuleInterpreter (83%). The default no-op audit, tenant, and write-authorization types are not exercised. tools/Mtpr.LocalTokenService is not included in the report and has no automated tests.
+The latest test coverage report shows 93% statement coverage (1,665 of 1,784) for the projects under `src`: `Mtpr.Core` 100% (77/77), `Mtpr.Api` 96% (471/492), and `Mtpr.Engine` 92% (1,117/1,215). The default no-op audit, tenant, and write-authorization types were not exercised. `tools/Mtpr.LocalTokenService` is not included in the report and has no automated tests.
 
 ## Documentation
 
