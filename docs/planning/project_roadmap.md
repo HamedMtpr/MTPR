@@ -98,7 +98,7 @@ Local test results are the current milestone verification in the absence of CI. 
 - [x] Quickstart in the README that works from a clean machine.
 - [x] Fill in the placeholder docs (building, testing, deployment).
 - [x] Container image and a basic deployment guide.
-- [ ] Tag `v0.1.0-alpha` and write release notes.
+- [x] Tag `v0.1.0-alpha` and write release notes. (Release notes are in `docs/releasing/v0.1.0-alpha.md`; GitHub creates the tag when the release is published, and the release workflow attaches the assets.)
 
 **Exit criteria:** A new developer builds the sample app in under 30 minutes using only the docs.
 

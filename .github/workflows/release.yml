@@ -1,0 +1,49 @@
+name: Release
+# The tag is created by GitHub when the release is published in the UI
+# ("Choose a tag" -> "Create new tag on publish"), so no manual git tag is needed.
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+  packages: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Compute version
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - run: dotnet restore MTPR.slnx
+      - run: dotnet build MTPR.slnx --configuration Release --no-restore -p:Version=$VERSION
+      - run: dotnet test MTPR.slnx --configuration Release --no-build --no-restore
+      - name: Publish API
+        run: dotnet publish src/Mtpr.Api -c Release -p:Version=$VERSION -o out/api
+      - name: Package assets
+        run: |
+          mkdir -p dist
+          (cd out/api && zip -r "../../dist/mtpr-api-$TAG.zip" .)
+          (cd docs/examples && zip -r "../../dist/mtpr-helpdesk-definitions-$TAG.zip" m5-helpdesk)
+          (cd dist && sha256sum *.zip > SHA256SUMS.txt)
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" dist/* --clobber
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        run: |
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t "$IMAGE:$VERSION" .
+          docker push "$IMAGE:$VERSION"
