@@ -1,0 +1,8 @@
+{
+  "name": "customer",
+  "fields": [
+    { "name": "name", "type": "string", "required": true, "minLength": 1, "maxLength": 100 },
+    { "name": "email", "type": "string", "required": true, "maxLength": 200 }
+  ],
+  "unique": [["email"]]
+}

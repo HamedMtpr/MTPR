@@ -11,4 +11,4 @@ This document describes how to contribute code to the project.
 - [M2 relations and querying implementation](m2_relations_querying_implementation.md)
 - [M3 business rules implementation](m3_business_rules_implementation.md)
 - [M4 security and multi-tenancy implementation](m4_security_multi_tenancy_implementation.md)
-- [M5 local token service implementation](m5_local_token_service_implementation.md)
+- [M5 alpha release implementation](m5_alpha_release_implementation.md)

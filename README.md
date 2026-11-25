@@ -10,6 +10,7 @@ MTPR is a metadata-driven backend generator designed to turn configuration and b
 - [M2 relations and querying](docs/building/m2_relations_querying.md)
 - [M3 business rules: build and run](docs/building/m3_business_rules_build.md)
 - [M4 security and multi-tenancy: build and run](docs/building/m4_security_multi_tenancy_build.md)
+- [M5 alpha release: build and run](docs/building/m5_alpha_release_build.md)
 
 ## Documentation
 

@@ -1,16 +1,16 @@
-# M5 local token service: operations
+# m5_alpha_release: operations
 
 - [Back to index](index.md)
-- [M5 build and run](../building/m5_local_token_service_build.md)
-- [M5 implementation](../coding/m5_local_token_service_implementation.md)
-- [M5 deployment](../deployment/m5_local_token_service_deployment.md)
-- [M5 testing](../testing/m5_local_token_service_testing.md)
+- [M5 build and run](../building/m5_alpha_release_build.md)
+- [M5 implementation](../coding/m5_alpha_release_implementation.md)
+- [M5 deployment](../deployment/m5_alpha_release_deployment.md)
+- [M5 testing](../testing/m5_alpha_release_testing.md)
 - [M4 security and multi-tenancy build](../building/m4_security_multi_tenancy_build.md)
-
-- [Token service settings](../../tools/Mtpr.LocalTokenService/appsettings.json)
 - [M4 operations](m4_security_multi_tenancy_operations.md)
+- [Token service settings](../../tools/Mtpr.LocalTokenService/appsettings.json)
+- [Helpdesk sample definitions](../examples/m5-helpdesk/README.md)
 
-## Clients and roles
+## Token service clients and roles
 
 Clients live under `LocalTokenService:Clients`, each with `Secret`, `Subject`, `Roles` and optional `TenantId`. Roles become `role` claims, which must match the grants under `Mtpr:Authorization:Roles` in the API. `TenantId` becomes the `tenant_id` claim used by tenant isolation. Client and lifetime changes from a reloadable configuration provider apply without a restart; environment variable changes need one. Tokens already issued stay valid until they expire.
 
@@ -34,3 +34,7 @@ The `kid` changes with the key, so the API can tell old and new keys apart.
 | `invalid_client` | Client id and secret; secrets are case sensitive. |
 
 Do not log or share issued tokens, client secrets or the PEM.
+
+## Sample application
+
+The API watches the definitions folder, so an edited helpdesk JSON file applies to the next request without a restart. In the container the definitions are in `/app/definitions` and the SQLite database is in the `/data` volume; back up that volume to keep the data.

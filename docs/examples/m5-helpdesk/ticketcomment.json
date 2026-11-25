@@ -1,0 +1,8 @@
+{
+  "name": "ticketcomment",
+  "fields": [
+    { "name": "ticketId", "type": "guid", "required": true,
+      "references": { "entity": "ticket", "onDelete": "cascade" } },
+    { "name": "body", "type": "string", "required": true, "minLength": 1, "maxLength": 2000 }
+  ]
+}

@@ -4,6 +4,7 @@
 
 ## M5 Alpha Release (in progress)
 
+- Added a helpdesk sample (`docs/examples/m5-helpdesk`) built purely from definitions, covered by integration tests, and a `Dockerfile` that runs the API with it.
 - Added `tools/Mtpr.LocalTokenService`, a development-only token service that issues RS256 JWTs and serves OIDC discovery and JWKS so the secured API runs without an external identity provider. The signing key comes from configuration or an ignored local file; never commit it. Replace the placeholder client secrets before use.
 
 ## M4 Security and Multi-Tenancy (in progress)

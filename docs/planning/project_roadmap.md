@@ -94,7 +94,7 @@ Local test results are the current milestone verification in the absence of CI. 
 
 ### M5 - Alpha Release (Week 12)
 
-- [ ] A realistic sample application (the first target domain) built purely from configuration.
+- [x] A realistic sample application (the first target domain) built purely from configuration.
 - [ ] Quickstart in the README that works from a clean machine.
 - [ ] Fill in the placeholder docs (building, testing, deployment).
 - [ ] Container image and a basic deployment guide.
